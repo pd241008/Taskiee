@@ -13,11 +13,15 @@ export function KanbanColumn({
   tasks,
   color,
   onTaskClick,
+  isAdmin,
+  currentUserId,
 }: {
   title: string;
   tasks: Task[];
   color: BadgeColor;
   onTaskClick: (task: Task) => void;
+  isAdmin: boolean;
+  currentUserId: string;
 }) {
   return (
     <div
@@ -37,6 +41,7 @@ export function KanbanColumn({
               task={task}
               color={color}
               onClick={onTaskClick}
+              disabled={!isAdmin && task.assignedTo?._id !== currentUserId}
             />
           ))}
         </div>

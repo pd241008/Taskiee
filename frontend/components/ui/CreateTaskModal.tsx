@@ -33,6 +33,7 @@ export default function CreateTaskModal({
     title: "",
     description: "",
     assignedTo: "",
+    deadline: "",
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -55,12 +56,13 @@ export default function CreateTaskModal({
         body: JSON.stringify({
           ...newTask,
           status: "Pending",
+          deadline: newTask.deadline || undefined,
         }),
       });
 
       if (!res.ok) throw new Error("Failed to create task");
 
-      setNewTask({ title: "", description: "", assignedTo: "" });
+      setNewTask({ title: "", description: "", assignedTo: "", deadline: "" });
       onTaskCreated();
       onClose();
     } catch (err: unknown) {
@@ -114,6 +116,17 @@ export default function CreateTaskModal({
             }
             disabled={isSubmitting}
           />
+
+          <div className="space-y-1">
+            <label className="text-xs font-mono text-gray-400 uppercase">Deadline (Optional)</label>
+            <input
+              type="date"
+              className="w-full p-3 bg-black border-2 border-gray-600 text-white focus:border-[#a855f7] outline-none transition-colors"
+              value={newTask.deadline}
+              onChange={(e) => setNewTask({ ...newTask, deadline: e.target.value })}
+              disabled={isSubmitting}
+            />
+          </div>
 
           <select
             required

@@ -7,10 +7,13 @@ export type TaskStatus =
   | "Blocked"
   | "Done";
 
+export type UserRole = "PRESIDENT" | "ADMIN" | "USER";
+
 export interface User {
   _id: string;
   name: string;
   jobTitle: string;
+  accessLevel: UserRole;
 }
 
 export interface Task {
@@ -20,4 +23,5 @@ export interface Task {
   status: TaskStatus;
   assignedTo: User | null;
   createdAt: string;
+  reviewNotes?: string;
 }

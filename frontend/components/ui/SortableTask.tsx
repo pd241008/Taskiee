@@ -15,13 +15,15 @@ export function SortableTask({
   task,
   color,
   onClick,
+  disabled = false,
 }: {
   task: Task;
   color: BadgeColor;
   onClick: (task: Task) => void;
+  disabled?: boolean;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition } =
-    useSortable({ id: task._id });
+    useSortable({ id: task._id, disabled });
 
   const style = {
     transform: CSS.Transform.toString(transform),

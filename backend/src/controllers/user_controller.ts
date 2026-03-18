@@ -4,6 +4,7 @@ import {
   createUserService,
   getAllUsersService,
 } from "../services/users_service";
+import User from "../models/users";
 
 export const createUser = async (
   req: Request,
@@ -21,6 +22,21 @@ export const getUsers = async (_req: Request, res: Response): Promise<void> => {
   try {
     const users = await getAllUsersService();
     res.status(200).json(users);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+};
+export const getUserById = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
+  try {
+    const user = await User.findById(req.params.id);
+    if (!user) {
+      res.status(404).json({ error: "User not found" });
+      return;
+    }
+    res.status(200).json(user);
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }

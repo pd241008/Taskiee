@@ -4,7 +4,7 @@ export interface IUser extends Document {
   name: string;
   email: string;
   jobTitle: string; // e.g., 'President', 'Tech Lead', 'Developer'
-  accessLevel: "ADMIN" | "USER"; // This dictates what they can do in the portal
+  accessLevel: "PRESIDENT" | "ADMIN" | "USER"; // This dictates what they can do in the portal
   createdAt: Date;
   updatedAt: Date;
 }
@@ -26,7 +26,7 @@ const UserSchema: Schema = new Schema(
     },
     accessLevel: {
       type: String,
-      enum: ["ADMIN", "USER"],
+      enum: ["PRESIDENT", "ADMIN", "USER"],
       default: "USER", // Defaults to standard user for safety
     },
   },

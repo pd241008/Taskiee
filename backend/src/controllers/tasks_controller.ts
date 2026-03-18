@@ -5,8 +5,7 @@ import {
   createTaskService,
   getAllTasksService,
   getTasksByUserService,
-  updateTaskStatusService,
-  // 2. Fixed the typo in the service name (assuming you leave the filename as tasks_servie.ts)
+  updateTaskService,
 } from "../services/tasks_servie";
 // 3. Ensure the model import matches your file name exactly
 import Task from "../models/tasks";
@@ -43,14 +42,13 @@ export const getTasks = async (
   }
 };
 
-export const updateTaskStatus = async (
+export const updateTask = async (
   req: AuthRequest,
   res: Response,
 ): Promise<void> => {
   try {
-    // 1. Force TypeScript to treat 'id' strictly as a single string
     const id = req.params.id as string;
-    const { status } = req.body;
+    const { status, reviewNotes } = req.body;
 
     const task = await Task.findById(id);
     if (!task) {
@@ -58,19 +56,30 @@ export const updateTaskStatus = async (
       return;
     }
 
-    // Security check: Only the assigned user or an admin can update the status
+    const isAdmin = req.user.accessLevel === "ADMIN";
+
+    // 1. Permission check for general updates (status)
     if (
       task.assignedTo.toString() !== req.user._id.toString() &&
-      req.user.accessLevel !== "ADMIN"
+      !isAdmin
     ) {
       res
         .status(403)
-        .json({ error: "Forbidden: You can only update your own tasks" });
+        .json({ error: "Forbidden: You do not have permission to update this task" });
       return;
     }
 
-    // 2. Now TypeScript knows 'id' is a string, so this will pass perfectly!
-    const updatedTask = await updateTaskStatusService(id, status);
+    // 2. Permission check for reviewNotes (only Admin)
+    if (reviewNotes !== undefined && !isAdmin) {
+      res.status(403).json({ error: "Forbidden: Only admins can add reviews" });
+      return;
+    }
+
+    const updateData: any = {};
+    if (status) updateData.status = status;
+    if (reviewNotes !== undefined) updateData.reviewNotes = reviewNotes;
+
+    const updatedTask = await updateTaskService(id, updateData);
     res.status(200).json(updatedTask);
   } catch (error: any) {
     res.status(400).json({ error: error.message });

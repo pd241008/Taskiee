@@ -10,6 +10,7 @@ interface Props {
   onTeamUpdated: () => void; // Matches the prop passed from page.tsx
   apiUrl: string; // Ensures dynamic routing works in production
   adminId: string;
+  currentUserRole: string;
 }
 
 /* ================= COMPONENT ================= */
@@ -20,11 +21,13 @@ export default function ManageTeamModal({
   onTeamUpdated,
   apiUrl,
   adminId,
+  currentUserRole,
 }: Props) {
   const [form, setForm] = useState({
     name: "",
     email: "",
     jobTitle: "",
+    accessLevel: "USER",
   });
 
   // Production UX States
@@ -53,7 +56,7 @@ export default function ManageTeamModal({
       }
 
       onTeamUpdated(); // Triggers fetchData in page.tsx to refresh the board
-      setForm({ name: "", email: "", jobTitle: "" }); // Reset form
+      setForm({ name: "", email: "", jobTitle: "", accessLevel: "USER" }); // Reset form
       onClose(); // Close modal on success
     } catch (err: unknown) {
       console.error(err);
@@ -117,6 +120,24 @@ export default function ManageTeamModal({
             required
             disabled={isSubmitting}
           />
+
+          <div className="space-y-1">
+            <label className="text-xs font-mono text-gray-500 uppercase">Access Level</label>
+            <select
+              value={form.accessLevel}
+              onChange={(e) => setForm({ ...form, accessLevel: e.target.value })}
+              className="w-full p-3 bg-black border-2 border-gray-600 text-white focus:border-neo-cyan outline-none transition-colors"
+              disabled={isSubmitting}
+            >
+              <option value="USER">USER (Standard Member)</option>
+              {(currentUserRole === "ADMIN" || currentUserRole === "PRESIDENT") && (
+                <option value="ADMIN">ADMIN (Task Manager)</option>
+              )}
+              {currentUserRole === "PRESIDENT" && (
+                <option value="PRESIDENT">PRESIDENT (Full Access)</option>
+              )}
+            </select>
+          </div>
 
           <button
             type="submit"

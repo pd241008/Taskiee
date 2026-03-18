@@ -27,6 +27,7 @@ const statusConfig = [
 export default function TasksPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [users, setUsers] = useState<User[]>([]);
+  const [currentUserRole, setCurrentUserRole] = useState<string>("USER");
   const [isLoading, setIsLoading] = useState(true);
 
   // Modal states
@@ -41,7 +42,8 @@ export default function TasksPage() {
   const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
   const ADMIN_ID = process.env.NEXT_PUBLIC_ADMIN_ID || "admin-fallback-id";
   const CURRENT_USER_ID = process.env.NEXT_PUBLIC_CURRENT_USER_ID || ADMIN_ID;
-  const isAdmin = CURRENT_USER_ID === ADMIN_ID;
+  const isAdmin = currentUserRole === "ADMIN" || currentUserRole === "PRESIDENT";
+  const isPresident = currentUserRole === "PRESIDENT";
 
   const handleTaskClick = (task: Task) => {
     setSelectedTask(task);
@@ -51,21 +53,29 @@ export default function TasksPage() {
   const fetchData = useCallback(async () => {
     try {
       setIsLoading(true);
-      const [tasksRes, usersRes] = await Promise.all([
+      const [tasksRes, usersRes, profileRes] = await Promise.all([
         fetch(`${API_URL}/api/tasks`, {
           headers: { "x-user-id": CURRENT_USER_ID },
         }),
         fetch(`${API_URL}/api/users`, {
           headers: { "x-user-id": CURRENT_USER_ID },
         }),
+        fetch(`${API_URL}/api/users/${CURRENT_USER_ID}`, {
+          headers: { "x-user-id": CURRENT_USER_ID },
+        }),
       ]);
 
-      if (!tasksRes.ok || !usersRes.ok) {
+      if (!tasksRes.ok || !usersRes.ok || !profileRes.ok) {
         throw new Error("Failed to fetch data from the server.");
       }
 
-      setTasks(await tasksRes.json());
-      setUsers(await usersRes.json());
+      const tasksData = await tasksRes.json();
+      const usersData = await usersRes.json();
+      const profileData = await profileRes.json();
+
+      setTasks(tasksData);
+      setUsers(usersData);
+      setCurrentUserRole(profileData.accessLevel);
     } catch (err) {
       console.error("Data fetching error:", err);
     } finally {
@@ -84,12 +94,23 @@ export default function TasksPage() {
     const taskId = active.id as string;
     const newStatus = over.id as TaskStatus;
 
-    // Find previous status in case we need to revert on failure
-    const previousTask = tasks.find((t) => t._id === taskId);
-    if (!previousTask) return;
+    // Find previous task to check permissions and for revert
+    const taskToMove = tasks.find((t) => t._id === taskId);
+    if (!taskToMove) return;
+
+    // Permission check (matching component level check for safety)
+    const canMove = isAdmin || taskToMove.assignedTo?._id === CURRENT_USER_ID;
+    if (!canMove) {
+      alert("Unauthorized: You can only move tasks assigned to you.");
+      return;
+    }
 
     // Treat "Completed" as "Done" for equality check
-    const currentEffectiveStatus = previousTask.status === ("Completed" as any) ? "Done" : previousTask.status;
+    const currentEffectiveStatus =
+      (taskToMove.status === "Done" || (taskToMove.status as string) === "Completed")
+        ? "Done"
+        : taskToMove.status;
+
     if (currentEffectiveStatus === newStatus) return;
 
     // Optimistic UI update
@@ -107,13 +128,20 @@ export default function TasksPage() {
         body: JSON.stringify({ status: newStatus }),
       });
 
-      if (!res.ok) throw new Error("Status update failed");
-    } catch (err) {
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || "Status update failed");
+      }
+
+      // Successfully updated on server.
+      // We could merge the response task here if needed.
+    } catch (err: any) {
       console.error("Failed to update status, reverting...", err);
+      alert(err.message || "Failed to sync update with server.");
       // Revert optimistic update on failure
       setTasks((prev) =>
         prev.map((t) =>
-          t._id === taskId ? { ...t, status: previousTask.status } : t,
+          t._id === taskId ? { ...t, status: taskToMove.status } : t,
         ),
       );
     }
@@ -161,13 +189,15 @@ export default function TasksPage() {
             <KanbanColumn
               key={key}
               title={key}
-              tasks={tasks.filter((t) => 
-                key === "Done" 
+              tasks={tasks.filter((t) =>
+                key === "Done"
                   ? t.status === "Done" || (t.status as string) === "Completed"
                   : t.status === key
               )}
               color={color}
               onTaskClick={handleTaskClick}
+              isAdmin={isAdmin}
+              currentUserId={CURRENT_USER_ID}
             />
           ))}
         </div>
@@ -189,6 +219,7 @@ export default function TasksPage() {
         onTeamUpdated={fetchData}
         apiUrl={API_URL}
         adminId={CURRENT_USER_ID}
+        currentUserRole={currentUserRole}
       />
 
       <TaskDetailModal
@@ -196,12 +227,14 @@ export default function TasksPage() {
         onClose={() => setIsDetailModalOpen(false)}
         task={selectedTask}
         statusColor={
-          statusConfig.find((s) => 
-            selectedTask?.status === ("Completed" as any) 
-              ? s.key === "Done" 
+          statusConfig.find((s) =>
+            selectedTask?.status === ("Completed" as any)
+              ? s.key === "Done"
               : s.key === selectedTask?.status
           )?.color || "gray"
         }
+        isAdmin={isAdmin}
+        onTaskUpdated={fetchData}
       />
     </div>
   );
