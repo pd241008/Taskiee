@@ -1,11 +1,12 @@
 "use client";
 
-import { DndContext, closestCorners, DragEndEvent } from "@dnd-kit/core";
+import { DndContext, closestCorners, DragEndEvent, DragOverlay } from "@dnd-kit/core";
 import { useEffect, useState, useCallback } from "react";
 import { TaskButton } from "@/components/ui/TaskButton";
+import { TaskCard } from "@/components/ui/TaskCard";
+import { TaskBadge, BadgeColor } from "@/components/ui/TaskBadge";
 import CreateTaskModal from "@/components/ui/CreateTaskModal";
 import ManageTeamModal from "@/components/ui/CreateMemberModal";
-import { BadgeColor } from "@/components/ui/TaskBadge";
 import { KanbanColumn } from "@/components/ui/KanbanColumn";
 import TaskDetailModal from "@/components/ui/TaskDetailModal";
 import { Task, User, TaskStatus } from "@/types/tasks";
@@ -27,6 +28,7 @@ const statusConfig = [
 export default function TasksPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [users, setUsers] = useState<User[]>([]);
+  const [currentUserRole, setCurrentUserRole] = useState<string>("USER");
   const [isLoading, setIsLoading] = useState(true);
 
   // Modal states
@@ -41,7 +43,8 @@ export default function TasksPage() {
   const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
   const ADMIN_ID = process.env.NEXT_PUBLIC_ADMIN_ID || "admin-fallback-id";
   const CURRENT_USER_ID = process.env.NEXT_PUBLIC_CURRENT_USER_ID || ADMIN_ID;
-  const isAdmin = CURRENT_USER_ID === ADMIN_ID;
+  const isAdmin = currentUserRole === "ADMIN" || currentUserRole === "PRESIDENT";
+  const isPresident = currentUserRole === "PRESIDENT";
 
   const handleTaskClick = (task: Task) => {
     setSelectedTask(task);
@@ -51,21 +54,29 @@ export default function TasksPage() {
   const fetchData = useCallback(async () => {
     try {
       setIsLoading(true);
-      const [tasksRes, usersRes] = await Promise.all([
+      const [tasksRes, usersRes, profileRes] = await Promise.all([
         fetch(`${API_URL}/api/tasks`, {
           headers: { "x-user-id": CURRENT_USER_ID },
         }),
         fetch(`${API_URL}/api/users`, {
           headers: { "x-user-id": CURRENT_USER_ID },
         }),
+        fetch(`${API_URL}/api/users/${CURRENT_USER_ID}`, {
+          headers: { "x-user-id": CURRENT_USER_ID },
+        }),
       ]);
 
-      if (!tasksRes.ok || !usersRes.ok) {
+      if (!tasksRes.ok || !usersRes.ok || !profileRes.ok) {
         throw new Error("Failed to fetch data from the server.");
       }
 
-      setTasks(await tasksRes.json());
-      setUsers(await usersRes.json());
+      const tasksData = await tasksRes.json();
+      const usersData = await usersRes.json();
+      const profileData = await profileRes.json();
+
+      setTasks(tasksData);
+      setUsers(usersData);
+      setCurrentUserRole(profileData.accessLevel);
     } catch (err) {
       console.error("Data fetching error:", err);
     } finally {
@@ -77,20 +88,57 @@ export default function TasksPage() {
     fetchData();
   }, [fetchData]);
 
+  const [activeId, setActiveId] = useState<string | null>(null);
+
+  const handleDragStart = (event: any) => {
+    setActiveId(event.active.id);
+  };
+
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
+    setActiveId(null);
+
     if (!over) return;
 
     const taskId = active.id as string;
-    const newStatus = over.id as TaskStatus;
+    let newStatus: TaskStatus;
 
-    // Find previous status in case we need to revert on failure
-    const previousTask = tasks.find((t) => t._id === taskId);
-    if (!previousTask) return;
+    // Resolve the destination container (column)
+    // dnd-kit gives us the container ID if dropped over a SortableContext/Droppable
+    // or the item ID if dropped over a SortableItem
+    const overId = over.id as string;
 
-    // Treat "Completed" as "Done" for equality check
-    const currentEffectiveStatus = previousTask.status === ("Completed" as any) ? "Done" : previousTask.status;
-    if (currentEffectiveStatus === newStatus) return;
+    // Check if overId is a valid status/column key
+    const isColumn = statusConfig.some((s) => s.key === overId) || overId === "unknown";
+
+    if (isColumn) {
+      newStatus = overId as TaskStatus;
+    } else {
+      // Find which column this task belongs to
+      const overTask = tasks.find((t) => t._id === overId);
+      if (overTask) {
+        newStatus = overTask.status;
+      } else {
+        console.error("Could not resolve status for target:", overId);
+        return;
+      }
+    }
+
+    // Protection for data recovery
+    if (newStatus === "unknown" as any) return;
+
+    // Find the task being moved
+    const taskToMove = tasks.find((t) => t._id === taskId);
+    if (!taskToMove) return;
+
+    // Permission check
+    const canMove = isAdmin || taskToMove.assignedTo?._id === CURRENT_USER_ID;
+    if (!canMove) {
+      alert("Unauthorized: You can only move tasks assigned to you.");
+      return;
+    }
+
+    if (taskToMove.status === newStatus) return;
 
     // Optimistic UI update
     setTasks((prev) =>
@@ -107,17 +155,27 @@ export default function TasksPage() {
         body: JSON.stringify({ status: newStatus }),
       });
 
-      if (!res.ok) throw new Error("Status update failed");
-    } catch (err) {
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || "Status update failed");
+      }
+    } catch (err: any) {
       console.error("Failed to update status, reverting...", err);
-      // Revert optimistic update on failure
+      alert(err.message || "Failed to sync update with server.");
       setTasks((prev) =>
         prev.map((t) =>
-          t._id === taskId ? { ...t, status: previousTask.status } : t,
+          t._id === taskId ? { ...t, status: taskToMove.status } : t,
         ),
       );
     }
   };
+
+  // Logic to find tasks that don't match any known status
+  const unknownTasks = tasks.filter(
+    (t) => !statusConfig.some((s) => s.key === t.status) && t.status !== ("Completed" as any)
+  );
+
+  const activeTask = activeId ? tasks.find(t => t._id === activeId) : null;
 
   // Render a simple loading skeleton/spinner while booting up
   if (isLoading) {
@@ -131,16 +189,19 @@ export default function TasksPage() {
   }
 
   return (
-    <div className="p-10 flex flex-col h-screen">
-      <header className="mb-10 border-b-4 border-white pb-4 flex justify-between items-end">
-        <div>
-          <h1 className="text-5xl font-black uppercase tracking-tight">Task Board</h1>
-          <p className="font-mono text-neo-green mt-2 uppercase">
-            SYSTEM STATUS: OPERATIONAL
+    <div className="p-10 flex flex-col h-screen max-w-[1600px] mx-auto overflow-hidden">
+      <header className="mb-12 border-b-8 border-white pb-6 flex justify-between items-end relative overflow-hidden group">
+        <div className="relative z-10">
+          <h1 className="text-6xl font-black uppercase tracking-[calc(-0.05em)] leading-none font-display mb-2">
+            Task Board
+          </h1>
+          <p className="font-mono text-neo-green text-sm font-bold tracking-tighter uppercase flex items-center gap-2">
+            <span className="w-2 h-2 bg-neo-green rounded-full animate-pulse" />
+            System Status: Operational
           </p>
         </div>
 
-        <div className="flex gap-4">
+        <div className="flex gap-4 relative z-10">
           {isAdmin && (
             <TaskButton onClick={() => setIsTeamModalOpen(true)}>
               Manage Team
@@ -151,26 +212,60 @@ export default function TasksPage() {
             + Create Task
           </TaskButton>
         </div>
+        
+        {/* Subtle background glow for header */}
+        <div className="absolute right-0 top-0 w-64 h-64 bg-neo-green/5 blur-[100px] pointer-events-none -mr-32 -mt-32 transition-colors" />
       </header>
 
       <DndContext
         collisionDetection={closestCorners}
+        onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}>
         <div className="flex gap-6 overflow-x-auto flex-1 pb-4">
+          {unknownTasks.length > 0 && (
+            <KanbanColumn
+              key="unknown"
+              title="unknown" // Machine-friendly ID for internal logic
+              tasks={unknownTasks}
+              color="gray"
+              onTaskClick={handleTaskClick}
+              isAdmin={isAdmin}
+              currentUserId={CURRENT_USER_ID}
+            />
+          )}
+
           {statusConfig.map(({ key, color }) => (
             <KanbanColumn
               key={key}
               title={key}
-              tasks={tasks.filter((t) => 
-                key === "Done" 
+              tasks={tasks.filter((t) =>
+                key === "Done"
                   ? t.status === "Done" || (t.status as string) === "Completed"
                   : t.status === key
               )}
               color={color}
               onTaskClick={handleTaskClick}
+              isAdmin={isAdmin}
+              currentUserId={CURRENT_USER_ID}
             />
           ))}
         </div>
+
+        <DragOverlay>
+          {activeTask ? (
+            <div className="opacity-80 scale-105 transition-transform">
+               <TaskCard color={
+                (statusConfig.find(s => s.key === activeTask.status)?.color || "white") as any
+               }>
+                <TaskBadge text={activeTask.status} color={
+                  (statusConfig.find(s => s.key === activeTask.status)?.color || "gray") as any
+                } />
+                <h3 className="font-bold mt-2">{activeTask.title}</h3>
+                <p className="text-xs text-gray-400 line-clamp-2">{activeTask.description}</p>
+              </TaskCard>
+            </div>
+          ) : null}
+        </DragOverlay>
       </DndContext>
 
       {/* --- MODALS --- */}
@@ -189,6 +284,7 @@ export default function TasksPage() {
         onTeamUpdated={fetchData}
         apiUrl={API_URL}
         adminId={CURRENT_USER_ID}
+        currentUserRole={currentUserRole}
       />
 
       <TaskDetailModal
@@ -196,12 +292,14 @@ export default function TasksPage() {
         onClose={() => setIsDetailModalOpen(false)}
         task={selectedTask}
         statusColor={
-          statusConfig.find((s) => 
-            selectedTask?.status === ("Completed" as any) 
-              ? s.key === "Done" 
+          statusConfig.find((s) =>
+            selectedTask?.status === ("Completed" as any)
+              ? s.key === "Done"
               : s.key === selectedTask?.status
           )?.color || "gray"
         }
+        isAdmin={isAdmin}
+        onTaskUpdated={fetchData}
       />
     </div>
   );

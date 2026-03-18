@@ -7,13 +7,14 @@ export interface ITask extends Document {
   createdBy: mongoose.Types.ObjectId;
   deadline?: Date;
   status:
-    | "Pending"
-    | "Backlog"
-    | "Todo"
-    | "In Progress"
-    | "In Review"
-    | "Blocked"
-    | "Done";
+  | "Pending"
+  | "Backlog"
+  | "Todo"
+  | "In Progress"
+  | "In Review"
+  | "Blocked"
+  | "Done";
+  reviewNotes?: string;
 }
 
 const TaskSchema: Schema = new Schema(
@@ -52,6 +53,10 @@ const TaskSchema: Schema = new Schema(
         "Done",
       ],
       default: "Pending",
+    },
+    reviewNotes: {
+      type: String,
+      required: false,
     },
   },
   {

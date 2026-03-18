@@ -20,7 +20,7 @@ interface TaskBadgeProps {
 
 export const TaskBadge = ({ text, color }: TaskBadgeProps) => {
   return (
-    <span className={`px-2 py-1 text-xs font-bold ${colorMap[color]}`}>
+    <span className={`px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider border border-black/10 shadow-sm transition-all duration-300 ${colorMap[color]}`}>
       {text}
     </span>
   );

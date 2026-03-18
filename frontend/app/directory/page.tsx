@@ -11,6 +11,8 @@ interface User {
   name: string;
   email: string;
   jobTitle: string;
+  accessLevel: "PRESIDENT" | "ADMIN" | "USER";
+  activeTasks?: { title: string; status: string }[];
 }
 
 interface RoleGroup {
@@ -23,27 +25,49 @@ export default function DirectoryPage() {
   const [roles, setRoles] = useState<RoleGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [currentUserRole, setCurrentUserRole] = useState<string>("USER");
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const MY_ADMIN_ID = process.env.NEXT_PUBLIC_ADMIN_ID as string;
+  const CURRENT_USER_ID = process.env.NEXT_PUBLIC_CURRENT_USER_ID || MY_ADMIN_ID;
   const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+  const isAdmin = currentUserRole === "ADMIN" || currentUserRole === "PRESIDENT";
+
+  interface Task {
+    _id: string;
+    title: string;
+    status: string;
+    assignedTo: string;
+  }
 
   const fetchUsers = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
 
-      const res = await fetch(`${API_URL}/api/users`, {
-        headers: { "x-user-id": MY_ADMIN_ID },
-      });
+      const [usersRes, tasksRes, profileRes] = await Promise.all([
+        fetch(`${API_URL}/api/users`, {
+          headers: { "x-user-id": CURRENT_USER_ID },
+        }),
+        fetch(`${API_URL}/api/tasks`, {
+          headers: { "x-user-id": CURRENT_USER_ID },
+        }),
+        fetch(`${API_URL}/api/users/${CURRENT_USER_ID}`, {
+          headers: { "x-user-id": CURRENT_USER_ID },
+        }),
+      ]);
 
-      if (!res.ok) throw new Error("Failed to fetch users");
+      if (!usersRes.ok || !tasksRes.ok || !profileRes.ok) throw new Error("Failed to fetch data");
 
-      const users: User[] = await res.json();
+      const users: User[] = await usersRes.json();
+      const tasks: Task[] = await tasksRes.json();
+      const profile = await profileRes.json();
+
+      setCurrentUserRole(profile.accessLevel);
 
       type GroupedRoles = Record<
         string,
-        { title: string; members: (User & { active: number })[] }
+        { title: string; members: (User & { activeTasks: Task[] })[] }
       >;
 
       const grouped = users.reduce((acc: GroupedRoles, user) => {
@@ -51,7 +75,12 @@ export default function DirectoryPage() {
         if (!acc[role]) {
           acc[role] = { title: role, members: [] };
         }
-        acc[role].members.push({ ...user, active: 0 });
+
+        const userTasks = tasks.filter(t =>
+          (typeof t.assignedTo === 'string' ? t.assignedTo : (t.assignedTo as any)._id) === user._id
+        );
+
+        acc[role].members.push({ ...user, activeTasks: userTasks });
         return acc;
       }, {} as GroupedRoles);
 
@@ -59,12 +88,16 @@ export default function DirectoryPage() {
 
       const formattedRoles: RoleGroup[] = Object.values(grouped).map(
         (group, idx) => ({
-          ...group,
+          title: group.title,
           color: colorMap[idx % colorMap.length],
+          members: group.members.map(m => ({
+            ...m,
+            active: m.activeTasks.filter(t => t.status !== 'Done').length
+          }))
         }),
       );
 
-      setRoles(formattedRoles);
+      setRoles(formattedRoles as any);
     } catch (err: unknown) {
       console.error(err);
 
@@ -73,7 +106,7 @@ export default function DirectoryPage() {
       } else {
         setError("Something went wrong");
       }
-      } finally {
+    } finally {
       setLoading(false);
     }
   }, [MY_ADMIN_ID, API_URL]);
@@ -116,11 +149,13 @@ export default function DirectoryPage() {
         </div>
 
         {/* ✅ FIXED */}
-        <TaskButton
-          color="cyan"
-          onClick={() => setIsModalOpen(true)}>
-          + Add Member
-        </TaskButton>
+        {isAdmin && (
+          <TaskButton
+            color="cyan"
+            onClick={() => setIsModalOpen(true)}>
+            + Add Member
+          </TaskButton>
+        )}
       </header>
 
       <div className="space-y-12">
@@ -128,17 +163,16 @@ export default function DirectoryPage() {
           <section key={idx}>
             <h2 className="text-3xl font-black uppercase mb-6 flex items-center gap-3">
               <span
-                className={`w-4 h-4 ${
-                  group.color === "cyan"
-                    ? "bg-neo-cyan"
-                    : group.color === "pink"
-                      ? "bg-neo-pink"
-                      : group.color === "yellow"
-                        ? "bg-neo-yellow"
-                        : group.color === "green"
-                          ? "bg-neo-green"
-                          : "bg-neo-purple"
-                }`}
+                className={`w-4 h-4 ${group.color === "cyan"
+                  ? "bg-neo-cyan"
+                  : group.color === "pink"
+                    ? "bg-neo-pink"
+                    : group.color === "yellow"
+                      ? "bg-neo-yellow"
+                      : group.color === "green"
+                        ? "bg-neo-green"
+                        : "bg-neo-purple"
+                  }`}
               />
               {group.title}
               <span className="text-sm font-mono text-gray-500 uppercase">
@@ -166,9 +200,26 @@ export default function DirectoryPage() {
 
                   <p className="text-sm text-gray-400">{member.email}</p>
 
+                  {/* ✅ Task List for Assignment Requirement */}
+                  {member.activeTasks && member.activeTasks.length > 0 && (
+                    <div className="mt-4 space-y-1">
+                      <p className="text-[10px] font-mono text-gray-500 uppercase tracking-widest border-b border-gray-800 pb-1 mb-2">
+                        Assigned Tasks
+                      </p>
+                      <ul className="text-xs font-mono space-y-1 max-h-24 overflow-y-auto custom-scrollbar">
+                        {member.activeTasks.map((t, i) => (
+                          <li key={i} className="flex items-center gap-2 text-gray-300">
+                            <span className={`w-1.5 h-1.5 rounded-full ${t.status === 'Done' ? 'bg-neo-green' : 'bg-neo-yellow'}`} />
+                            <span className="truncate">{t.title}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
                   <div className="border-t-2 border-dashed border-gray-600 pt-3 mt-3 flex justify-between">
-                    <span className="text-xs text-gray-400">Active Tasks</span>
-                    <span className="font-black">{member.active}</span>
+                    <span className="text-xs text-gray-400">Total Tasks</span>
+                    <span className="font-black">{member.activeTasks?.length || 0}</span>
                   </div>
                 </TaskCard>
               ))}
@@ -183,7 +234,8 @@ export default function DirectoryPage() {
         onClose={() => setIsModalOpen(false)}
         onTeamUpdated={fetchUsers}
         apiUrl={API_URL}
-        adminId={MY_ADMIN_ID}
+        adminId={CURRENT_USER_ID}
+        currentUserRole={currentUserRole}
       />
     </div>
   );

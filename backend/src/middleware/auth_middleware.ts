@@ -36,9 +36,21 @@ export const requireAdmin = (
   res: Response,
   next: NextFunction,
 ): void => {
-  if (req.user && req.user.accessLevel === "ADMIN") {
+  if (req.user && (req.user.accessLevel === "ADMIN" || req.user.accessLevel === "PRESIDENT")) {
     next();
   } else {
     res.status(403).json({ error: "Forbidden: Admin access required" });
+  }
+};
+
+export const requirePresident = (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+): void => {
+  if (req.user && req.user.accessLevel === "PRESIDENT") {
+    next();
+  } else {
+    res.status(403).json({ error: "Forbidden: President access required" });
   }
 };

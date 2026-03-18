@@ -19,9 +19,9 @@ export const getTasksByUserService = async (userId: string) => {
   );
 };
 
-export const updateTaskStatusService = async (
+export const updateTaskService = async (
   taskId: string,
-  status: string,
+  updateData: Partial<ITask>,
 ) => {
-  return await Task.findByIdAndUpdate(taskId, { status }, { new: true });
+  return await Task.findByIdAndUpdate(taskId, updateData, { new: true });
 };

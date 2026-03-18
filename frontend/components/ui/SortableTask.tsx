@@ -15,13 +15,15 @@ export function SortableTask({
   task,
   color,
   onClick,
+  disabled = false,
 }: {
   task: Task;
   color: BadgeColor;
   onClick: (task: Task) => void;
+  disabled?: boolean;
 }) {
-  const { attributes, listeners, setNodeRef, transform, transition } =
-    useSortable({ id: task._id });
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id: task._id, disabled });
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -35,7 +37,7 @@ export function SortableTask({
       {...attributes}
       {...listeners}
       onClick={() => onClick(task)}
-      className="cursor-pointer">
+      className={`cursor-pointer ${isDragging ? "opacity-30" : ""}`}>
       <TaskCard color={mapCardColor(color)}>
         <TaskBadge
           text={task.status}

@@ -14,7 +14,9 @@ export default function DashboardPage() {
     completionRate: "0%",
     pendingTasks: 0,
     recentTasks: [] as Task[],
-    rolesCount: {} as Record<string, number>,
+    rolesWithMembers: {} as Record<string, string[]>,
+    tasksPerMember: {} as Record<string, number>,
+    currentUserRole: "USER",
   });
 
   // Modal states
@@ -22,25 +24,32 @@ export default function DashboardPage() {
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
   const MY_ADMIN_ID = process.env.NEXT_PUBLIC_ADMIN_ID as string;
+  const CURRENT_USER_ID = process.env.NEXT_PUBLIC_CURRENT_USER_ID || MY_ADMIN_ID;
+  const isAdmin = dashboardData.currentUserRole === "ADMIN" || dashboardData.currentUserRole === "PRESIDENT";
 
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
         // Fetch both Tasks and Users simultaneously for speed
-        const [tasksRes, usersRes] = await Promise.all([
-          fetch("http://localhost:5000/api/tasks", {
-            headers: { "x-user-id": MY_ADMIN_ID },
+        const [tasksRes, usersRes, profileRes] = await Promise.all([
+          fetch(`${API_URL}/api/tasks`, {
+            headers: { "x-user-id": CURRENT_USER_ID },
           }),
-          fetch("http://localhost:5000/api/users", {
-            headers: { "x-user-id": MY_ADMIN_ID },
+          fetch(`${API_URL}/api/users`, {
+            headers: { "x-user-id": CURRENT_USER_ID },
+          }),
+          fetch(`${API_URL}/api/users/${CURRENT_USER_ID}`, {
+            headers: { "x-user-id": CURRENT_USER_ID },
           }),
         ]);
 
-        if (!tasksRes.ok || !usersRes.ok)
+        if (!tasksRes.ok || !usersRes.ok || !profileRes.ok)
           throw new Error("Failed to fetch data");
 
         const tasks: Task[] = await tasksRes.json();
         const users: User[] = await usersRes.json();
+        const profile: User = await profileRes.json();
 
         // 1. Calculate Stats
         const totalTasks = tasks.length;
@@ -60,9 +69,18 @@ export default function DashboardPage() {
           )
           .slice(0, 3);
 
-        // 3. Group and count members
-        const rolesCount = users.reduce((acc: Record<string, number>, user) => {
-          acc[user.jobTitle] = (acc[user.jobTitle] || 0) + 1;
+        // 3. Group members by role
+        const rolesWithMembers = users.reduce((acc: Record<string, string[]>, user) => {
+          const role = user.jobTitle || "Unassigned";
+          if (!acc[role]) acc[role] = [];
+          acc[role].push(user.name);
+          return acc;
+        }, {});
+
+        // 4. Count tasks per member
+        const tasksPerMember = tasks.reduce((acc: Record<string, number>, task) => {
+          const userName = (task.assignedTo as any)?.name || "Unknown";
+          acc[userName] = (acc[userName] || 0) + 1;
           return acc;
         }, {});
 
@@ -72,7 +90,9 @@ export default function DashboardPage() {
           completionRate,
           pendingTasks,
           recentTasks,
-          rolesCount,
+          rolesWithMembers,
+          tasksPerMember,
+          currentUserRole: profile.accessLevel,
         });
       } catch (error) {
         console.error("Error loading dashboard:", error);
@@ -118,26 +138,31 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="p-10 max-w-7xl mx-auto">
-      <header className="mb-10 border-b-4 border-white pb-4 flex justify-between items-end">
-        <div>
-          <h1 className="text-5xl font-black uppercase tracking-tight">
+    <div className="p-10 max-w-7xl mx-auto min-h-screen">
+      <header className="mb-12 border-b-8 border-white pb-6 flex justify-between items-end relative overflow-hidden group">
+        <div className="relative z-10">
+          <h1 className="text-6xl font-black uppercase tracking-[calc(-0.05em)] leading-none font-display mb-2">
             Dashboard Overview
           </h1>
-          <p className="font-mono text-neo-purple mt-2">
-            SYSTEM STATUS: OPTIMAL
+          <p className="font-mono text-neo-purple text-sm font-bold tracking-tighter uppercase flex items-center gap-2">
+            <span className="w-2 h-2 bg-neo-green rounded-full animate-pulse" />
+            System Status: Optimal
           </p>
         </div>
+        {/* Subtle background glow for header */}
+        <div className="absolute right-0 top-0 w-64 h-64 bg-neo-purple/10 blur-[100px] pointer-events-none -mr-32 -mt-32 group-hover:bg-neo-purple/20 transition-colors" />
       </header>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-12">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-16">
         {stats.map((stat, idx) => (
           <TaskCard
             key={idx}
             color={stat.color}
-            className="flex flex-col items-center py-8">
-            <h3 className="text-lg font-bold uppercase mb-2">{stat.label}</h3>
-            <p className="text-5xl font-black">{stat.value}</p>
+            className="flex flex-col items-start py-10 px-8 group">
+            <h3 className="text-xs font-black uppercase mb-4 opacity-70 tracking-widest font-mono">{stat.label}</h3>
+            <p className="text-6xl font-black font-display tracking-tighter group-hover:scale-105 transition-transform origin-left">{stat.value}</p>
+            {/* Minimalist indicator line */}
+            <div className={`w-8 h-1 bg-neo-${stat.color} mt-4 group-hover:w-full transition-all duration-500`} />
           </TaskCard>
         ))}
       </div>
@@ -188,21 +213,46 @@ export default function DashboardPage() {
 
         <TaskCard color="yellow">
           <h2 className="text-2xl font-black uppercase mb-6 border-b-2 border-dashed border-black pb-2 text-black">
-            Members by Role
+            Team by Role
           </h2>
-          <div className="space-y-4 text-black font-bold">
-            {Object.keys(dashboardData.rolesCount).length === 0 ? (
+          <div className="space-y-6 text-black">
+            {Object.keys(dashboardData.rolesWithMembers).length === 0 ? (
               <p className="font-mono text-gray-800">No members found.</p>
             ) : (
-              Object.entries(dashboardData.rolesCount).map(([role, count]) => (
+              Object.entries(dashboardData.rolesWithMembers).map(([role, members]) => (
                 <div
                   key={role}
-                  className="flex justify-between border-b-2 border-transparent hover:border-black transition-colors pb-1">
-                  <span className="uppercase">{role}</span>
-                  <span className="text-xl font-black">{count}</span>
+                  className="space-y-1">
+                  <div className="flex justify-between items-end border-b-2 border-black/20 pb-1">
+                    <span className="uppercase text-xs font-black opacity-60 tracking-widest">{role}</span>
+                    <span className="text-sm font-black">{members.length}</span>
+                  </div>
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    {members.map((name, i) => (
+                      <span key={i} className="text-sm font-bold bg-black/10 px-2 py-0.5 rounded border border-black/5">
+                        {name}
+                      </span>
+                    ))}
+                  </div>
                 </div>
               ))
             )}
+          </div>
+        </TaskCard>
+      </div>
+
+      <div className="mt-10">
+        <TaskCard color="cyan">
+          <h2 className="text-2xl font-black uppercase mb-6 border-b-2 border-dashed border-black pb-2 text-black">
+            Tasks Assigned to Members
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {Object.entries(dashboardData.tasksPerMember).map(([name, count]) => (
+              <div key={name} className="bg-black/10 p-4 border border-black/20 flex justify-between items-center">
+                <span className="font-bold text-black uppercase text-sm">{name}</span>
+                <span className="bg-black text-white px-2 py-0.5 font-black text-xs">{count} TASKS</span>
+              </div>
+            ))}
           </div>
         </TaskCard>
       </div>
@@ -226,6 +276,8 @@ export default function DashboardPage() {
                       ? "purple"
                       : "gray") as any
         }
+        isAdmin={isAdmin}
+        onTaskUpdated={() => window.location.reload()}
       />
     </div>
   );
