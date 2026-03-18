@@ -1,0 +1,49 @@
+"use client";
+
+import { useSortable } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { TaskCard } from "@/components/ui/TaskCard";
+import { TaskBadge, BadgeColor } from "@/components/ui/TaskBadge";
+import { Task } from "@/types/tasks";
+
+const mapCardColor = (color: BadgeColor) => {
+  if (color === "gray") return "white";
+  return color;
+};
+
+export function SortableTask({
+  task,
+  color,
+  onClick,
+}: {
+  task: Task;
+  color: BadgeColor;
+  onClick: (task: Task) => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition } =
+    useSortable({ id: task._id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
+      onClick={() => onClick(task)}
+      className="cursor-pointer">
+      <TaskCard color={mapCardColor(color)}>
+        <TaskBadge
+          text={task.status}
+          color={color}
+        />
+        <h3 className="font-bold mt-2">{task.title}</h3>
+        <p className="text-xs text-gray-400 line-clamp-2">{task.description}</p>
+      </TaskCard>
+    </div>
+  );
+}
