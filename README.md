@@ -33,6 +33,9 @@ A high-contrast, strictly-typed task management system designed for engineering 
 - Node.js (v18+)
 - MongoDB (Running locally or a Cloud URI)
 
+> [!WARNING]
+> **Important Development Note**: Do not run this project using **SRM WIFI** in a local MongoDB environment. SRM WIFI has known compatibility issues with local database loading in this architecture. Use a standard independent MongoDB instance for stable development.
+
 ### 1. Clone the Repository
 ```bash
 git clone <repository-url>
