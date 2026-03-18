@@ -1,110 +1,208 @@
-import { TaskCard } from "@/components/ui/TaskCard";
-import { TaskBadge } from "@/components/ui/TaskBadge";
+"use client";
+
+import { DndContext, closestCorners, DragEndEvent } from "@dnd-kit/core";
+import { useEffect, useState, useCallback } from "react";
 import { TaskButton } from "@/components/ui/TaskButton";
+import CreateTaskModal from "@/components/ui/CreateTaskModal";
+import ManageTeamModal from "@/components/ui/CreateMemberModal";
+import { BadgeColor } from "@/components/ui/TaskBadge";
+import { KanbanColumn } from "@/components/ui/KanbanColumn";
+import TaskDetailModal from "@/components/ui/TaskDetailModal";
+import { Task, User, TaskStatus } from "@/types/tasks";
+
+/* ================= CONFIG ================= */
+
+const statusConfig = [
+  { key: "Pending", color: "white" },
+  { key: "Backlog", color: "gray" },
+  { key: "Todo", color: "purple" },
+  { key: "In Progress", color: "cyan" },
+  { key: "In Review", color: "yellow" },
+  { key: "Blocked", color: "pink" },
+  { key: "Done", color: "green" },
+] satisfies { key: TaskStatus; color: BadgeColor }[];
+
+/* ================= PAGE ================= */
 
 export default function TasksPage() {
-  const columns = [
-    {
-      title: "To Do (Pending)",
-      color: "purple" as const,
-      tasks: [
-        {
-          title: "Draft Q3 Social Media Content",
-          desc: "Create visual strategy for summer campaign.",
-          assignee: "Elena R.",
-          date: "Mar 18",
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Modal states
+  const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
+  const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
+
+  // Detail Modal state
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+
+  // Environment & Auth (Defensive checks added)
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+  const ADMIN_ID = process.env.NEXT_PUBLIC_ADMIN_ID || "admin-fallback-id";
+  const CURRENT_USER_ID = process.env.NEXT_PUBLIC_CURRENT_USER_ID || ADMIN_ID;
+  const isAdmin = CURRENT_USER_ID === ADMIN_ID;
+
+  const handleTaskClick = (task: Task) => {
+    setSelectedTask(task);
+    setIsDetailModalOpen(true);
+  };
+
+  const fetchData = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const [tasksRes, usersRes] = await Promise.all([
+        fetch(`${API_URL}/api/tasks`, {
+          headers: { "x-user-id": CURRENT_USER_ID },
+        }),
+        fetch(`${API_URL}/api/users`, {
+          headers: { "x-user-id": CURRENT_USER_ID },
+        }),
+      ]);
+
+      if (!tasksRes.ok || !usersRes.ok) {
+        throw new Error("Failed to fetch data from the server.");
+      }
+
+      setTasks(await tasksRes.json());
+      setUsers(await usersRes.json());
+    } catch (err) {
+      console.error("Data fetching error:", err);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [API_URL, CURRENT_USER_ID]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over) return;
+
+    const taskId = active.id as string;
+    const newStatus = over.id as TaskStatus;
+
+    // Find previous status in case we need to revert on failure
+    const previousTask = tasks.find((t) => t._id === taskId);
+    if (!previousTask) return;
+
+    // Treat "Completed" as "Done" for equality check
+    const currentEffectiveStatus = previousTask.status === ("Completed" as any) ? "Done" : previousTask.status;
+    if (currentEffectiveStatus === newStatus) return;
+
+    // Optimistic UI update
+    setTasks((prev) =>
+      prev.map((t) => (t._id === taskId ? { ...t, status: newStatus } : t)),
+    );
+
+    try {
+      const res = await fetch(`${API_URL}/api/tasks/${taskId}/status`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "x-user-id": CURRENT_USER_ID,
         },
-        {
-          title: "User Interview Analysis",
-          desc: "Synthesize findings from mobile app users.",
-          assignee: "Marcus T.",
-          date: "Mar 20",
-        },
-      ],
-    },
-    {
-      title: "In Progress",
-      color: "yellow" as const,
-      tasks: [
-        {
-          title: "API Integration: Stripe",
-          desc: "Implementing multi-vendor payout system.",
-          assignee: "Alex R.",
-          date: "Mar 17",
-        },
-      ],
-    },
-    {
-      title: "Completed",
-      color: "green" as const,
-      tasks: [
-        {
-          title: "Brand Identity v2",
-          desc: "Package all logo variations for handoff.",
-          assignee: "Elena R.",
-          date: "Mar 10",
-        },
-      ],
-    },
-  ];
+        body: JSON.stringify({ status: newStatus }),
+      });
+
+      if (!res.ok) throw new Error("Status update failed");
+    } catch (err) {
+      console.error("Failed to update status, reverting...", err);
+      // Revert optimistic update on failure
+      setTasks((prev) =>
+        prev.map((t) =>
+          t._id === taskId ? { ...t, status: previousTask.status } : t,
+        ),
+      );
+    }
+  };
+
+  // Render a simple loading skeleton/spinner while booting up
+  if (isLoading) {
+    return (
+      <div className="h-screen flex items-center justify-center">
+        <p className="text-2xl font-black text-neo-green animate-pulse uppercase">
+          Loading Task Board...
+        </p>
+      </div>
+    );
+  }
 
   return (
-    <div className="p-10 max-w-1600px mx-auto h-screen flex flex-col">
-      <header className="mb-10 border-b-4 border-white pb-4 flex justify-between items-end shrink-0">
+    <div className="p-10 flex flex-col h-screen">
+      <header className="mb-10 border-b-4 border-white pb-4 flex justify-between items-end">
         <div>
-          <h1 className="text-5xl font-black uppercase tracking-tight">
-            Product Roadmap
-          </h1>
-          <p className="font-mono text-gray-400 mt-2">Sprint v2.4.0</p>
+          <h1 className="text-5xl font-black uppercase tracking-tight">Task Board</h1>
+          <p className="font-mono text-neo-green mt-2 uppercase">
+            SYSTEM STATUS: OPERATIONAL
+          </p>
         </div>
-        <TaskButton color="purple">+ Create Task</TaskButton>
+
+        <div className="flex gap-4">
+          {isAdmin && (
+            <TaskButton onClick={() => setIsTeamModalOpen(true)}>
+              Manage Team
+            </TaskButton>
+          )}
+
+          <TaskButton color="green" onClick={() => setIsTaskModalOpen(true)}>
+            + Create Task
+          </TaskButton>
+        </div>
       </header>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 flex-1 overflow-hidden">
-        {columns.map((col, idx) => (
-          <div
-            key={idx}
-            className="flex flex-col h-full">
-            <h2
-              className={`text-xl font-black uppercase mb-4 py-2 border-b-4 border-neo-${col.color}`}>
-              {col.title}{" "}
-              <span className="text-sm ml-2 text-gray-500">
-                {col.tasks.length}
-              </span>
-            </h2>
-            <div className="flex-1 overflow-y-auto pr-2 space-y-4 pb-10">
-              {col.tasks.map((task, i) => (
-                <TaskCard
-                  key={i}
-                  color={col.color}
-                  className="cursor-grab active:cursor-grabbing">
-                  <div className="flex justify-between mb-3">
-                    <TaskBadge
-                      text={col.title === "Completed" ? "Completed" : "Pending"}
-                      color={col.color}
-                    />
-                    <span className="text-xs font-mono font-bold">
-                      {task.date}
-                    </span>
-                  </div>
-                  <h3 className="font-bold text-lg mb-2 leading-tight">
-                    {task.title}
-                  </h3>
-                  <p className="text-sm text-gray-400 mb-4 line-clamp-2">
-                    {task.desc}
-                  </p>
-                  <div className="flex justify-between items-center border-t-2 border-dashed border-gray-600 pt-3">
-                    <span className="text-xs font-mono">Assignee:</span>
-                    <span className="font-bold text-sm bg-black px-2 py-1 border border-white">
-                      {task.assignee}
-                    </span>
-                  </div>
-                </TaskCard>
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
+      <DndContext
+        collisionDetection={closestCorners}
+        onDragEnd={handleDragEnd}>
+        <div className="flex gap-6 overflow-x-auto flex-1 pb-4">
+          {statusConfig.map(({ key, color }) => (
+            <KanbanColumn
+              key={key}
+              title={key}
+              tasks={tasks.filter((t) => 
+                key === "Done" 
+                  ? t.status === "Done" || (t.status as string) === "Completed"
+                  : t.status === key
+              )}
+              color={color}
+              onTaskClick={handleTaskClick}
+            />
+          ))}
+        </div>
+      </DndContext>
+
+      {/* --- MODALS --- */}
+      <CreateTaskModal
+        isOpen={isTaskModalOpen}
+        onClose={() => setIsTaskModalOpen(false)}
+        users={users}
+        onTaskCreated={fetchData}
+        adminId={CURRENT_USER_ID}
+        apiUrl={API_URL}
+      />
+
+      <ManageTeamModal
+        isOpen={isTeamModalOpen}
+        onClose={() => setIsTeamModalOpen(false)}
+        onTeamUpdated={fetchData}
+        apiUrl={API_URL}
+        adminId={CURRENT_USER_ID}
+      />
+
+      <TaskDetailModal
+        isOpen={isDetailModalOpen}
+        onClose={() => setIsDetailModalOpen(false)}
+        task={selectedTask}
+        statusColor={
+          statusConfig.find((s) => 
+            selectedTask?.status === ("Completed" as any) 
+              ? s.key === "Done" 
+              : s.key === selectedTask?.status
+          )?.color || "gray"
+        }
+      />
     </div>
   );
 }
