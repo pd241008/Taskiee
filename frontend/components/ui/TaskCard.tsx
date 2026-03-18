@@ -22,8 +22,10 @@ export const TaskCard = ({
 
   return (
     <div
-      className={`bg-neo-card border-2 border-white p-6 transition-all duration-300 ${shadowMap[color]} ${className}`}>
-      {children}
+      className={`bg-neo-card border-2 border-white p-6 transition-all duration-300 transform-gpu hover:-translate-y-1 hover:-translate-x-1 ${shadowMap[color]} ${className} relative overflow-hidden group`}>
+      {/* Subtle inner glow matching the color */}
+      <div className={`absolute -inset-1 opacity-0 group-hover:opacity-10 transition-opacity blur-xl bg-neo-${color}`} />
+      <div className="relative z-10">{children}</div>
     </div>
   );
 };

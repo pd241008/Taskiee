@@ -30,15 +30,16 @@ export default function DashboardPage() {
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
         // Fetch both Tasks and Users simultaneously for speed
         const [tasksRes, usersRes, profileRes] = await Promise.all([
-          fetch("http://localhost:5000/api/tasks", {
+          fetch(`${API_URL}/api/tasks`, {
             headers: { "x-user-id": CURRENT_USER_ID },
           }),
-          fetch("http://localhost:5000/api/users", {
+          fetch(`${API_URL}/api/users`, {
             headers: { "x-user-id": CURRENT_USER_ID },
           }),
-          fetch(`http://localhost:5000/api/users/${CURRENT_USER_ID}`, {
+          fetch(`${API_URL}/api/users/${CURRENT_USER_ID}`, {
             headers: { "x-user-id": CURRENT_USER_ID },
           }),
         ]);
@@ -137,26 +138,31 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="p-10 max-w-7xl mx-auto">
-      <header className="mb-10 border-b-4 border-white pb-4 flex justify-between items-end">
-        <div>
-          <h1 className="text-5xl font-black uppercase tracking-tight">
+    <div className="p-10 max-w-7xl mx-auto min-h-screen">
+      <header className="mb-12 border-b-8 border-white pb-6 flex justify-between items-end relative overflow-hidden group">
+        <div className="relative z-10">
+          <h1 className="text-6xl font-black uppercase tracking-[calc(-0.05em)] leading-none font-display mb-2">
             Dashboard Overview
           </h1>
-          <p className="font-mono text-neo-purple mt-2">
-            SYSTEM STATUS: OPTIMAL
+          <p className="font-mono text-neo-purple text-sm font-bold tracking-tighter uppercase flex items-center gap-2">
+            <span className="w-2 h-2 bg-neo-green rounded-full animate-pulse" />
+            System Status: Optimal
           </p>
         </div>
+        {/* Subtle background glow for header */}
+        <div className="absolute right-0 top-0 w-64 h-64 bg-neo-purple/10 blur-[100px] pointer-events-none -mr-32 -mt-32 group-hover:bg-neo-purple/20 transition-colors" />
       </header>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-12">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-16">
         {stats.map((stat, idx) => (
           <TaskCard
             key={idx}
             color={stat.color}
-            className="flex flex-col items-center py-8">
-            <h3 className="text-lg font-bold uppercase mb-2">{stat.label}</h3>
-            <p className="text-5xl font-black">{stat.value}</p>
+            className="flex flex-col items-start py-10 px-8 group">
+            <h3 className="text-xs font-black uppercase mb-4 opacity-70 tracking-widest font-mono">{stat.label}</h3>
+            <p className="text-6xl font-black font-display tracking-tighter group-hover:scale-105 transition-transform origin-left">{stat.value}</p>
+            {/* Minimalist indicator line */}
+            <div className={`w-8 h-1 bg-neo-${stat.color} mt-4 group-hover:w-full transition-all duration-500`} />
           </TaskCard>
         ))}
       </div>

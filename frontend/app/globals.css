@@ -1,23 +1,27 @@
 @import "tailwindcss";
 
 @theme {
-  /* Custom Neobrutalism Colors */
-  --color-neo-bg: #121212;
-  --color-neo-card: #1E1E24;
+  /* Premium Neobrutalism Palette */
+  --color-neo-bg: #0A0A0B;
+  --color-neo-card: #151518;
   --color-neo-purple: #A855F7;
   --color-neo-green: #A3E635;
   --color-neo-yellow: #FACC15;
   --color-neo-cyan: #22D3EE;
   --color-neo-pink: #EC4899;
   --color-neo-white: #FFFFFF;
+  --color-neo-border: #FFFFFF;
 
-  /* Custom Hard Shadows */
-  --shadow-neo-purple: 4px 4px 0px 0px #A855F7;
-  --shadow-neo-green: 4px 4px 0px 0px #A3E635;
-  --shadow-neo-yellow: 4px 4px 0px 0px #FACC15;
-  --shadow-neo-cyan: 4px 4px 0px 0px #22D3EE;
-  --shadow-neo-pink: 4px 4px 0px 0px #EC4899;
-  --shadow-neo-white: 4px 4px 0px 0px #FFFFFF;
+  /* Refined Hard Shadows - More depth */
+  --shadow-neo-purple: 6px 6px 0px 0px #A855F7;
+  --shadow-neo-green: 6px 6px 0px 0px #A3E635;
+  --shadow-neo-yellow: 6px 6px 0px 0px #FACC15;
+  --shadow-neo-cyan: 6px 6px 0px 0px #22D3EE;
+  --shadow-neo-pink: 6px 6px 0px 0px #EC4899;
+  --shadow-neo-white: 6px 6px 0px 0px #FFFFFF;
+  
+  --font-display: "Outfit", sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
 }
 
 body {

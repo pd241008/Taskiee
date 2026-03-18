@@ -29,8 +29,9 @@ export const getTasks = async (
   res: Response,
 ): Promise<void> => {
   try {
-    // Admins see all tasks, regular users only see their own
-    if (req.user.accessLevel === "ADMIN") {
+    // Admins and Presidents see all tasks, regular users only see their own
+    const isAdminOrPresident = req.user.accessLevel === "ADMIN" || req.user.accessLevel === "PRESIDENT";
+    if (isAdminOrPresident) {
       const tasks = await getAllTasksService();
       res.status(200).json(tasks);
     } else {
@@ -56,12 +57,27 @@ export const updateTask = async (
       return;
     }
 
-    const isAdmin = req.user.accessLevel === "ADMIN";
+    const validStatuses = [
+      "Pending",
+      "Backlog",
+      "Todo",
+      "In Progress",
+      "In Review",
+      "Blocked",
+      "Done",
+    ];
+
+    if (status && !validStatuses.includes(status)) {
+      res.status(400).json({ error: `Invalid status: ${status}. Must be one of ${validStatuses.join(", ")}` });
+      return;
+    }
+
+    const isAdminOrPresident = req.user.accessLevel === "ADMIN" || req.user.accessLevel === "PRESIDENT";
 
     // 1. Permission check for general updates (status)
     if (
       task.assignedTo.toString() !== req.user._id.toString() &&
-      !isAdmin
+      !isAdminOrPresident
     ) {
       res
         .status(403)
@@ -69,9 +85,9 @@ export const updateTask = async (
       return;
     }
 
-    // 2. Permission check for reviewNotes (only Admin)
-    if (reviewNotes !== undefined && !isAdmin) {
-      res.status(403).json({ error: "Forbidden: Only admins can add reviews" });
+    // 2. Permission check for reviewNotes (only Admin/President)
+    if (reviewNotes !== undefined && !isAdminOrPresident) {
+      res.status(403).json({ error: "Forbidden: Only admins and presidents can add reviews" });
       return;
     }
 

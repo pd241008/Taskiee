@@ -30,7 +30,7 @@ export default function TaskDetailModal({
   task,
   statusColor: initialStatusColor,
   isAdmin = false,
-  onTaskUpdated
+  onTaskUpdated,
 }: Props) {
   const [isEditing, setIsEditing] = useState(false);
   const [editedStatus, setEditedStatus] = useState<TaskStatus>("Pending");
@@ -84,10 +84,10 @@ export default function TaskDetailModal({
 
   return (
     <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-[100] p-6 backdrop-blur-sm">
-      <div
-        className="bg-[#1a1a1a] border-4 border-white w-full max-w-2xl shadow-[10px_10px_0px_0px_rgba(255,255,255,0.2)] animate-in fade-in zoom-in duration-300 relative overflow-hidden"
-      >
-        <div className={`h-2 w-full bg-neo-${initialStatusColor === 'gray' ? 'white' : initialStatusColor}`} />
+      <div className="bg-[#1a1a1a] border-4 border-white w-full max-w-2xl shadow-[10px_10px_0px_0px_rgba(255,255,255,0.2)] animate-in fade-in zoom-in duration-300 relative overflow-hidden">
+        <div
+          className={`h-2 w-full bg-neo-${initialStatusColor === "gray" ? "white" : initialStatusColor}`}
+        />
 
         <div className="p-10">
           <header className="flex justify-between items-start mb-8">
@@ -96,16 +96,26 @@ export default function TaskDetailModal({
                 {isAdmin && isEditing ? (
                   <select
                     value={editedStatus}
-                    onChange={(e) => setEditedStatus(e.target.value as TaskStatus)}
-                    className="bg-black border-2 border-white text-white px-2 py-1 font-mono text-xs uppercase outline-none"
-                  >
-                    {statusOptions.map(s => <option key={s} value={s}>{s}</option>)}
+                    onChange={(e) =>
+                      setEditedStatus(e.target.value as TaskStatus)
+                    }
+                    className="bg-black border-2 border-white text-white px-2 py-1 font-mono text-xs uppercase outline-none">
+                    {statusOptions.map((s) => (
+                      <option
+                        key={s}
+                        value={s}>
+                        {s}
+                      </option>
+                    ))}
                   </select>
                 ) : (
-                  <TaskBadge text={task.status} color={initialStatusColor} />
+                  <TaskBadge
+                    text={task.status}
+                    color={initialStatusColor}
+                  />
                 )}
                 <span className="font-mono text-xs text-gray-400 uppercase tracking-widest">
-                  // {task._id.slice(-8)}
+                  {task._id.slice(-8)}
                 </span>
               </div>
               <h2 className="text-4xl font-black uppercase leading-tight tracking-tight">
@@ -115,8 +125,7 @@ export default function TaskDetailModal({
 
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-white transition-colors text-2xl font-black p-2 border-2 border-transparent hover:border-white"
-            >
+              className="text-gray-400 hover:text-white transition-colors text-2xl font-black p-2 border-2 border-transparent hover:border-white">
               ✕
             </button>
           </header>
@@ -153,11 +162,15 @@ export default function TaskDetailModal({
 
               <div className="flex gap-10">
                 <div>
-                  <h3 className="text-xs font-mono text-gray-500 uppercase mb-2">Created</h3>
+                  <h3 className="text-xs font-mono text-gray-500 uppercase mb-2">
+                    Created
+                  </h3>
                   <p className="font-bold">{formattedDate}</p>
                 </div>
                 <div>
-                  <h3 className="text-xs font-mono text-gray-500 uppercase mb-2">Security</h3>
+                  <h3 className="text-xs font-mono text-gray-500 uppercase mb-2">
+                    Security
+                  </h3>
                   <p className="font-bold text-neo-green uppercase">Level 1</p>
                 </div>
               </div>
@@ -165,21 +178,27 @@ export default function TaskDetailModal({
 
             <div className="space-y-6 bg-black/40 p-6 border-2 border-dashed border-gray-700">
               <div>
-                <h3 className="text-xs font-mono text-gray-500 uppercase mb-3">Assigned Agent</h3>
+                <h3 className="text-xs font-mono text-gray-500 uppercase mb-3">
+                  Assigned Agent
+                </h3>
                 {task.assignedTo ? (
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 bg-neo-purple border-2 border-white flex items-center justify-center font-black">
                       {task.assignedTo.name.charAt(0)}
                     </div>
                     <div>
-                      <p className="font-bold text-sm leading-none mb-1">{task.assignedTo.name}</p>
+                      <p className="font-bold text-sm leading-none mb-1">
+                        {task.assignedTo.name}
+                      </p>
                       <p className="text-[10px] text-gray-400 uppercase font-mono italic">
                         {task.assignedTo.jobTitle || "Agent"}
                       </p>
                     </div>
                   </div>
                 ) : (
-                  <p className="text-gray-500 italic text-sm font-mono uppercase">Unassigned</p>
+                  <p className="text-gray-500 italic text-sm font-mono uppercase">
+                    Unassigned
+                  </p>
                 )}
               </div>
 
@@ -187,20 +206,33 @@ export default function TaskDetailModal({
                 {isAdmin ? (
                   isEditing ? (
                     <>
-                      <TaskButton color="green" className="w-full text-xs py-2" onClick={handleSave} disabled={isSaving}>
+                      <TaskButton
+                        color="green"
+                        className="w-full text-xs py-2"
+                        onClick={handleSave}
+                        disabled={isSaving}>
                         {isSaving ? "Saving..." : "Save Changes"}
                       </TaskButton>
-                      <TaskButton color="white" className="w-full text-xs py-2" onClick={() => setIsEditing(false)}>
+                      <TaskButton
+                        color="white"
+                        className="w-full text-xs py-2"
+                        onClick={() => setIsEditing(false)}>
                         Cancel
                       </TaskButton>
                     </>
                   ) : (
-                    <TaskButton color="yellow" className="w-full text-xs py-2" onClick={() => setIsEditing(true)}>
+                    <TaskButton
+                      color="yellow"
+                      className="w-full text-xs py-2"
+                      onClick={() => setIsEditing(true)}>
                       Edit Task Details
                     </TaskButton>
                   )
                 ) : (
-                  <TaskButton color="white" className="w-full text-xs py-2" onClick={onClose}>
+                  <TaskButton
+                    color="white"
+                    className="w-full text-xs py-2"
+                    onClick={onClose}>
                     Acknowledge
                   </TaskButton>
                 )}
@@ -210,8 +242,12 @@ export default function TaskDetailModal({
         </div>
 
         <div className="absolute bottom-0 left-0 right-0 flex justify-between px-10 py-2 bg-black/50 border-t border-gray-800">
-          <span className="text-[10px] font-mono text-gray-600 uppercase">System::Taskie::Terminal</span>
-          <span className="text-[10px] font-mono text-gray-600 uppercase">STATUS: {isEditing ? 'EDITING' : 'SECURE'}</span>
+          <span className="text-[10px] font-mono text-gray-600 uppercase">
+            System::Taskie::Terminal
+          </span>
+          <span className="text-[10px] font-mono text-gray-600 uppercase">
+            STATUS: {isEditing ? "EDITING" : "SECURE"}
+          </span>
         </div>
       </div>
     </div>
