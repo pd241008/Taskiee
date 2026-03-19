@@ -120,5 +120,4 @@ Taskiee uses a **Premium Neobrutalist** aesthetic:
 > [!WARNING]
 > **Local Development Note**: Avoid using the project through **SRM WIFI** as it may cause issues where the local MongoDB does not load correctly. For stable performance, ensure your MongoDB instance is running independently and accessible via the standard connection string.
 
-> [!TIP]
-> This documentation is located in your project root and can be shared to demonstrate the architectural integrity of Taskiee.
+
