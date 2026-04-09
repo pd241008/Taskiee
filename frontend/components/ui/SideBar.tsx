@@ -1,11 +1,31 @@
+"use client";
+
 import Link from "next/link";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { TaskBadge } from "./TaskBadge";
 
 export default function SideBar() {
+  const [user, setUser] = useState<any>(null);
+  const router = useRouter();
+
+  useEffect(() => {
+    const storedUser = localStorage.getItem("taskiee_user");
+    if (storedUser) {
+      setUser(JSON.parse(storedUser));
+    }
+  }, []);
+
+  const handleLogout = () => {
+    localStorage.removeItem("taskiee_user");
+    window.location.href = "/login";
+  };
+
   const links = [
     { name: "Dashboard", path: "/dashboard", color: "purple" as const },
     { name: "Directory", path: "/directory", color: "cyan" as const },
     { name: "Task Board", path: "/tasks", color: "green" as const },
+    { name: "Reports", path: "/reports", color: "pink" as const },
   ];
 
   return (
@@ -39,18 +59,30 @@ export default function SideBar() {
         ))}
       </nav>
 
-      <div className="mt-auto pt-6">
-        <div className="p-4 border-2 border-dashed border-white/20 hover:border-white/40 transition-colors group">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-neo-purple border-2 border-white flex items-center justify-center font-black shadow-neo-purple group-hover:scale-110 transition-transform">
-              PD
+      <div className="mt-auto pt-6 space-y-4">
+        {user ? (
+          <div className="p-4 border-2 border-white bg-neo-card shadow-neo-purple group relative overflow-hidden">
+            <div className="flex items-center gap-3 relative z-10">
+              <div className="w-10 h-10 bg-neo-purple border-2 border-white flex items-center justify-center font-black shadow-neo-white">
+                {user.name.substring(0, 2).toUpperCase()}
+              </div>
+              <div className="overflow-hidden">
+                <p className="font-black text-xs uppercase tracking-tight truncate">{user.name}</p>
+                <p className="text-[10px] font-mono text-neo-green font-bold uppercase truncate">{user.jobTitle}</p>
+              </div>
             </div>
-            <div>
-              <p className="font-black text-xs uppercase tracking-tight">Prathmesh D.</p>
-              <p className="text-[10px] font-mono text-neo-green font-bold uppercase">System Admin</p>
-            </div>
+            
+            <button 
+              onClick={handleLogout}
+              className="mt-4 w-full bg-white text-black font-black text-[10px] py-2 border-2 border-black hover:bg-neo-pink transition-colors uppercase tracking-widest">
+              Emergency Exit (Logout)
+            </button>
           </div>
-        </div>
+        ) : (
+          <Link href="/login" className="block w-full bg-neo-purple text-black font-black py-3 text-center border-2 border-white shadow-neo-cyan hover:bg-white transition-all uppercase text-sm">
+            Access Port
+          </Link>
+        )}
       </div>
     </aside>
   );

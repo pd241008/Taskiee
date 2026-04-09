@@ -16,12 +16,21 @@ export interface User {
   accessLevel: UserRole;
 }
 
+export interface Project {
+  _id: string;
+  name: string;
+  description?: string;
+}
+
 export interface Task {
   _id: string;
   title: string;
   description: string;
   status: TaskStatus;
+  priority: "Low" | "Medium" | "High";
+  projectId?: string;
   assignedTo: User | null;
   createdAt: string;
+  deadline?: string;
   reviewNotes?: string;
 }

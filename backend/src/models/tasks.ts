@@ -14,6 +14,8 @@ export interface ITask extends Document {
   | "In Review"
   | "Blocked"
   | "Done";
+  priority: "Low" | "Medium" | "High";
+  projectId?: mongoose.Types.ObjectId;
   reviewNotes?: string;
 }
 
@@ -53,6 +55,16 @@ const TaskSchema: Schema = new Schema(
         "Done",
       ],
       default: "Pending",
+    },
+    priority: {
+      type: String,
+      enum: ["Low", "Medium", "High"],
+      default: "Medium",
+    },
+    projectId: {
+      type: Schema.Types.ObjectId,
+      ref: "Project",
+      required: false,
     },
     reviewNotes: {
       type: String,

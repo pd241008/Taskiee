@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import User from "../models/users";
+import { getUserByIdService } from "../services/auth_service";
 
 // Extend Express Request to hold our authenticated user
 export interface AuthRequest extends Request {
@@ -18,9 +19,15 @@ export const requireAuth = async (
       return;
     }
 
-    const user = await User.findById(userId);
+    let user: any = await User.findById(userId);
+
+    // If not in MongoDB, check the Mock JSON store
     if (!user) {
-      res.status(401).json({ error: "Unauthorized: User not found" });
+      user = await getUserByIdService(userId as string);
+    }
+
+    if (!user) {
+      res.status(401).json({ error: "Unauthorized: User not found in any store" });
       return;
     }
 
