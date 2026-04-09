@@ -160,6 +160,8 @@ $authService = @'
 import fs from "fs/promises";
 import path from "path";
 import { v4 as uuidv4 } from "uuid";
+import User from "../models/users";
+import mongoose from "mongoose";
 
 const USERS_FILE = path.join(process.cwd(), "data", "users.json");
 
@@ -185,8 +187,23 @@ async function writeUsers(users: MockUser[]): Promise<void> {
 
 export const registerUserService = async (userData: Omit<MockUser, "_id">) => {
   const users = await readUsers();
-  if (users.find((u) => u.email === userData.email)) throw new Error("User exists");
-  const newUser: MockUser = { ...userData, _id: uuidv4() };
+  if (users.find((u) => u.email === userData.email)) throw new Error("User with this email already exists");
+
+  // 1. Create in MongoDB first to get a valid ObjectId
+  const mongoUser = new User({
+    name: userData.name,
+    email: userData.email,
+    jobTitle: userData.jobTitle,
+    accessLevel: userData.accessLevel,
+  });
+  await mongoUser.save();
+
+  // 2. Use the same ID for our JSON store to ensure consistency
+  const newUser: MockUser = {
+    ...userData,
+    _id: (mongoUser._id as any).toString(),
+  };
+
   users.push(newUser);
   await writeUsers(users);
   const { password, ...userWithoutPassword } = newUser;
