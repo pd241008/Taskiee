@@ -3,6 +3,7 @@ import mongoose, { Schema, Document } from "mongoose";
 export interface IUser extends Document {
   name: string;
   email: string;
+  password?: string;
   jobTitle: string; // e.g., 'President', 'Tech Lead', 'Developer'
   accessLevel: "PRESIDENT" | "ADMIN" | "USER"; // This dictates what they can do in the portal
   createdAt: Date;
@@ -19,6 +20,10 @@ const UserSchema: Schema = new Schema(
       type: String,
       required: true,
       unique: true,
+    },
+    password: {
+      type: String,
+      required: false, // Optional because we might migrate some legacy users later
     },
     jobTitle: {
       type: String,

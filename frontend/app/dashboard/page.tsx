@@ -5,9 +5,11 @@ import { TaskCard } from "@/components/ui/TaskCard";
 import { TaskBadge } from "@/components/ui/TaskBadge";
 import TaskDetailModal from "@/components/ui/TaskDetailModal";
 import { Task, User } from "@/types/tasks";
+import { getLoggedInUser } from "@/utils/auth";
 
 export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
+  const [currentUserId, setCurrentUserId] = useState("");
   const [dashboardData, setDashboardData] = useState({
     totalTasks: 0,
     activeMembers: 0,
@@ -23,24 +25,31 @@ export default function DashboardPage() {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
-  const MY_ADMIN_ID = process.env.NEXT_PUBLIC_ADMIN_ID as string;
-  const CURRENT_USER_ID = process.env.NEXT_PUBLIC_CURRENT_USER_ID || MY_ADMIN_ID;
   const isAdmin = dashboardData.currentUserRole === "ADMIN" || dashboardData.currentUserRole === "PRESIDENT";
 
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
+        const user = getLoggedInUser();
+        if (!user) {
+          window.location.href = "/login";
+          return;
+        }
+
+        const activeUserId = user._id;
+        setCurrentUserId(activeUserId);
+
         const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
         // Fetch both Tasks and Users simultaneously for speed
         const [tasksRes, usersRes, profileRes] = await Promise.all([
           fetch(`${API_URL}/api/tasks`, {
-            headers: { "x-user-id": CURRENT_USER_ID },
+            headers: { "x-user-id": activeUserId },
           }),
           fetch(`${API_URL}/api/users`, {
-            headers: { "x-user-id": CURRENT_USER_ID },
+            headers: { "x-user-id": activeUserId },
           }),
-          fetch(`${API_URL}/api/users/${CURRENT_USER_ID}`, {
-            headers: { "x-user-id": CURRENT_USER_ID },
+          fetch(`${API_URL}/api/users/${activeUserId}`, {
+            headers: { "x-user-id": activeUserId },
           }),
         ]);
 
@@ -102,7 +111,7 @@ export default function DashboardPage() {
     };
 
     fetchDashboardData();
-  }, [MY_ADMIN_ID]);
+  }, []);
 
   const stats = [
     {
@@ -278,6 +287,7 @@ export default function DashboardPage() {
         }
         isAdmin={isAdmin}
         onTaskUpdated={() => window.location.reload()}
+        currentUserId={currentUserId}
       />
     </div>
   );
