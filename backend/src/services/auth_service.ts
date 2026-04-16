@@ -15,7 +15,7 @@ export interface MockUser {
   accessLevel: "PRESIDENT" | "ADMIN" | "USER";
 }
 
-function hashPassword(password: string): string {
+export function hashPassword(password: string): string {
   return crypto.createHash("sha256").update(password + SALT).digest("hex");
 }
 
@@ -33,7 +33,7 @@ async function writeUsers(users: MockUser[]): Promise<void> {
 }
 
 // Helper to ensure MongoDB and JSON stay in sync
-async function syncUserToJSON(user: MockUser) {
+export async function syncUserToJSON(user: MockUser) {
   const users = await readUsers();
   const index = users.findIndex((u) => u.email === user.email || u._id === user._id);
   if (index !== -1) {
@@ -44,37 +44,7 @@ async function syncUserToJSON(user: MockUser) {
   await writeUsers(users);
 }
 
-export const registerUserService = async (userData: Omit<MockUser, "_id">) => {
-  const users = await readUsers();
-  if (users.find((u) => u.email === userData.email)) {
-    throw new Error("User with this email already exists");
-  }
 
-  const hashedPassword = userData.password ? hashPassword(userData.password) : undefined;
-
-  // 1. Create in MongoDB first to get a valid ObjectId
-  const mongoUser = new User({
-    name: userData.name,
-    email: userData.email,
-    password: hashedPassword,
-    jobTitle: userData.jobTitle,
-    accessLevel: userData.accessLevel || "USER",
-  });
-  
-  await mongoUser.save();
-
-  // 2. Use the same ID for our JSON store to ensure consistency
-  const newUser: MockUser = {
-    ...userData,
-    password: hashedPassword,
-    _id: (mongoUser._id as any).toString(),
-  };
-
-  await syncUserToJSON(newUser);
-  
-  const { password, ...userWithoutPassword } = newUser;
-  return userWithoutPassword;
-};
 
 export const loginUserService = async (email: string, password?: string) => {
   // Try to find user in MongoDB first as the source of truth

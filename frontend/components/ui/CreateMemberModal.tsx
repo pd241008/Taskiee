@@ -26,6 +26,7 @@ export default function ManageTeamModal({
   const [form, setForm] = useState({
     name: "",
     email: "",
+    password: "", // Added password field
     jobTitle: "",
     accessLevel: "USER",
   });
@@ -56,7 +57,7 @@ export default function ManageTeamModal({
       }
 
       onTeamUpdated(); // Triggers fetchData in page.tsx to refresh the board
-      setForm({ name: "", email: "", jobTitle: "", accessLevel: "USER" }); // Reset form
+      setForm({ name: "", email: "", password: "", jobTitle: "", accessLevel: "USER" }); // Reset form
       onClose(); // Close modal on success
     } catch (err: unknown) {
       console.error(err);
@@ -113,9 +114,10 @@ export default function ManageTeamModal({
           />
 
           <input
-            placeholder="Role (e.g. Developer)"
-            value={form.jobTitle}
-            onChange={(e) => setForm({ ...form, jobTitle: e.target.value })}
+            type="password"
+            placeholder="Initial Password"
+            value={form.password}
+            onChange={(e) => setForm({ ...form, password: e.target.value })}
             className="w-full p-3 bg-black border-2 border-gray-600 text-white focus:border-neo-cyan outline-none transition-colors"
             required
             disabled={isSubmitting}

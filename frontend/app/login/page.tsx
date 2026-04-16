@@ -94,9 +94,6 @@ export default function LoginPage() {
           </button>
         </form>
 
-        <p className="mt-8 text-center font-mono text-xs uppercase text-gray-500">
-          New system user? <Link href="/register" className="text-neo-purple font-bold hover:underline">Request Access</Link>
-        </p>
       </div>
     </div>
   );
