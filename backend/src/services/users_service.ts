@@ -7,6 +7,11 @@ export const createUserService = async (userData: Partial<IUser>) => {
     userData.password = hashPassword(userData.password);
   }
 
+  // 2. Set default job title if missing
+  if (!userData.jobTitle || userData.jobTitle.trim() === "") {
+    userData.jobTitle = "Team Member";
+  }
+
   // 2. Save to MongoDB
   const user = new User(userData);
   const savedUser = await user.save();

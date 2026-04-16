@@ -114,6 +114,15 @@ export default function ManageTeamModal({
           />
 
           <input
+            placeholder="Job Title (e.g., Developer, Manager)"
+            value={form.jobTitle}
+            onChange={(e) => setForm({ ...form, jobTitle: e.target.value })}
+            className="w-full p-3 bg-black border-2 border-gray-600 text-white focus:border-neo-cyan outline-none transition-colors"
+            required
+            disabled={isSubmitting}
+          />
+
+          <input
             type="password"
             placeholder="Initial Password"
             value={form.password}
