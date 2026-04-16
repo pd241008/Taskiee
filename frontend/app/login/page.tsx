@@ -22,10 +22,16 @@ export default function LoginPage() {
     setError("");
 
     try {
+      // Normalize credentials
+      const cleanData = {
+        email: formData.email.trim(),
+        password: formData.password.trim(),
+      };
+
       const res = await fetch(`${API_URL}/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(cleanData),
       });
 
       if (!res.ok) {
@@ -94,6 +100,14 @@ export default function LoginPage() {
           </button>
         </form>
 
+        <div className="mt-8 pt-6 border-t-2 border-gray-800 text-center">
+          <p className="text-gray-400 text-xs uppercase font-mono tracking-widest">
+            New operative?{" "}
+            <Link href="/register" className="text-neo-cyan hover:text-white underline decoration-2 underline-offset-4">
+              Register Account
+            </Link>
+          </p>
+        </div>
       </div>
     </div>
   );

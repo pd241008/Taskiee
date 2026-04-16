@@ -12,7 +12,12 @@ export const createUserService = async (userData: Partial<IUser>) => {
     userData.jobTitle = "Team Member";
   }
 
-  // 2. Save to MongoDB
+  // 3. Normalize email
+  if (userData.email) {
+    userData.email = userData.email.toLowerCase().trim();
+  }
+
+  // 4. Save to MongoDB
   const user = new User(userData);
   const savedUser = await user.save();
 

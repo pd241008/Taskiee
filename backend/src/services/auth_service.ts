@@ -47,14 +47,18 @@ export async function syncUserToJSON(user: MockUser) {
 
 
 export const loginUserService = async (email: string, password?: string) => {
+  const normalizedEmail = email.toLowerCase().trim();
+  console.log(`[AUTH] Attempting login for: ${normalizedEmail}`);
+
   // Try to find user in MongoDB first as the source of truth
-  let mongoUser = await User.findOne({ email });
+  let mongoUser = await User.findOne({ email: normalizedEmail });
   
   // If not in Mongo, check JSON (legacy/sync case)
   const users = await readUsers();
-  const jsonUser = users.find((u) => u.email === email);
+  const jsonUser = users.find((u) => u.email === normalizedEmail);
 
   if (!mongoUser && !jsonUser) {
+    console.warn(`[AUTH] User not found: ${normalizedEmail}`);
     throw new Error("Invalid email or password");
   }
 
