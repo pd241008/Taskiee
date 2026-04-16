@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { setLoggedInUser } from "@/utils/auth";
 
 export default function LoginPage() {
   const [formData, setFormData] = useState({
@@ -35,9 +36,9 @@ export default function LoginPage() {
       const userData = await res.json();
       
       // Store user info in localStorage for mock auth
-      localStorage.setItem("taskiee_user", JSON.stringify(userData));
+      setLoggedInUser(userData);
       
-      router.push("/dashboard");
+      router.push("/tasks"); 
       // Trigger a refresh to update layout/sidebar
       window.location.reload(); 
     } catch (err: any) {

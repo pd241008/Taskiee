@@ -18,9 +18,12 @@ const exportToPdf = async (element: HTMLElement) => {
   html2pdf().set(opt).from(element).save();
 };
 
+import { getLoggedInUser } from "@/utils/auth";
+
 export default function ReportsPage() {
   const [loading, setLoading] = useState(true);
   const [reportData, setReportData] = useState<any>(null);
+  const [currentUserId, setCurrentUserId] = useState<string>("");
   const [projects, setProjects] = useState<Project[]>([]);
   const [filters, setFilters] = useState({
     startDate: "",
@@ -31,7 +34,6 @@ export default function ReportsPage() {
 
   const reportRef = useRef<HTMLDivElement>(null);
   const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
-  const MY_ADMIN_ID = process.env.NEXT_PUBLIC_ADMIN_ID || "replace-with-real-id";
 
   const statuses = [
     "Pending",
@@ -44,20 +46,26 @@ export default function ReportsPage() {
   ];
 
   useEffect(() => {
-    fetchInitialData();
+    const user = getLoggedInUser();
+    if (!user) {
+      window.location.href = "/login";
+      return;
+    }
+    setCurrentUserId(user._id);
+    fetchInitialData(user._id);
   }, []);
 
-  const fetchInitialData = async () => {
+  const fetchInitialData = async (userId: string) => {
     try {
       setLoading(true);
       const projRes = await fetch(`${API_URL}/api/projects`, {
-        headers: { "x-user-id": MY_ADMIN_ID },
+        headers: { "x-user-id": userId },
       });
       if (projRes.ok) {
         const data = await projRes.json();
         setProjects(data);
       }
-      await fetchReport();
+      await fetchReport(userId);
     } catch (err) {
       console.error(err);
     } finally {
@@ -65,8 +73,11 @@ export default function ReportsPage() {
     }
   };
 
-  const fetchReport = async () => {
+  const fetchReport = async (userId?: string) => {
     try {
+      const activeId = userId || currentUserId;
+      if (!activeId) return;
+
       setLoading(true);
       const queryParams = new URLSearchParams();
       if (filters.startDate) queryParams.append("startDate", filters.startDate);
@@ -75,7 +86,7 @@ export default function ReportsPage() {
       if (filters.status) queryParams.append("status", filters.status);
 
       const res = await fetch(`${API_URL}/api/reports?${queryParams.toString()}`, {
-        headers: { "x-user-id": MY_ADMIN_ID },
+        headers: { "x-user-id": activeId },
       });
       if (res.ok) {
         const data = await res.json();

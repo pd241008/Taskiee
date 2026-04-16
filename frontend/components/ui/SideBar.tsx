@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { getLoggedInUser, logoutUser } from "@/utils/auth";
 import { TaskBadge } from "./TaskBadge";
 
 export default function SideBar() {
@@ -10,15 +11,14 @@ export default function SideBar() {
   const router = useRouter();
 
   useEffect(() => {
-    const storedUser = localStorage.getItem("taskiee_user");
+    const storedUser = getLoggedInUser();
     if (storedUser) {
-      setUser(JSON.parse(storedUser));
+      setUser(storedUser);
     }
   }, []);
 
   const handleLogout = () => {
-    localStorage.removeItem("taskiee_user");
-    window.location.href = "/login";
+    logoutUser();
   };
 
   const links = [
@@ -71,8 +71,8 @@ export default function SideBar() {
                 <p className="text-[10px] font-mono text-neo-green font-bold uppercase truncate">{user.jobTitle}</p>
               </div>
             </div>
-            
-            <button 
+
+            <button
               onClick={handleLogout}
               className="mt-4 w-full bg-white text-black font-black text-[10px] py-2 border-2 border-black hover:bg-neo-pink transition-colors uppercase tracking-widest">
               Emergency Exit (Logout)

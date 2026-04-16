@@ -12,6 +12,7 @@ interface Props {
   statusColor: BadgeColor;
   isAdmin?: boolean;
   onTaskUpdated?: () => void;
+  currentUserId: string;
 }
 
 const statusOptions: TaskStatus[] = [
@@ -31,6 +32,7 @@ export default function TaskDetailModal({
   statusColor: initialStatusColor,
   isAdmin = false,
   onTaskUpdated,
+  currentUserId,
 }: Props) {
   const [isEditing, setIsEditing] = useState(false);
   const [editedStatus, setEditedStatus] = useState<TaskStatus>("Pending");
@@ -47,19 +49,18 @@ export default function TaskDetailModal({
   if (!isOpen || !task) return null;
 
   const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
-  const ADMIN_ID = process.env.NEXT_PUBLIC_ADMIN_ID as string;
 
-  const handleSave = async () => {
+  const handleSave = async (statusToSave?: TaskStatus) => {
     setIsSaving(true);
     try {
       const res = await fetch(`${API_URL}/api/tasks/${task._id}/status`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
-          "x-user-id": ADMIN_ID,
+          "x-user-id": currentUserId,
         },
         body: JSON.stringify({
-          status: editedStatus,
+          status: statusToSave || editedStatus,
           reviewNotes: editedReview,
         }),
       });
@@ -68,6 +69,7 @@ export default function TaskDetailModal({
 
       if (onTaskUpdated) onTaskUpdated();
       setIsEditing(false);
+      if (statusToSave === "Done") onClose();
     } catch (err) {
       console.error("Update error:", err);
       alert("Failed to save changes.");
@@ -81,6 +83,9 @@ export default function TaskDetailModal({
     day: "numeric",
     year: "numeric",
   });
+
+  const isAssignee = task.assignedTo?._id === currentUserId;
+  const showCompleteButton = !isAdmin && isAssignee && task.status !== "Done";
 
   return (
     <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-[100] p-6 backdrop-blur-sm">
@@ -209,7 +214,7 @@ export default function TaskDetailModal({
                       <TaskButton
                         color="green"
                         className="w-full text-xs py-2"
-                        onClick={handleSave}
+                        onClick={() => handleSave()}
                         disabled={isSaving}>
                         {isSaving ? "Saving..." : "Save Changes"}
                       </TaskButton>
@@ -229,12 +234,23 @@ export default function TaskDetailModal({
                     </TaskButton>
                   )
                 ) : (
-                  <TaskButton
-                    color="white"
-                    className="w-full text-xs py-2"
-                    onClick={onClose}>
-                    Acknowledge
-                  </TaskButton>
+                  <>
+                    {showCompleteButton && (
+                      <TaskButton
+                        color="green"
+                        className="w-full text-xs py-3 border-4 hover:scale-105 transition-all"
+                        onClick={() => handleSave("Done")}
+                        disabled={isSaving}>
+                        {isSaving ? "PROCESSING..." : "MARK AS COMPLETED"}
+                      </TaskButton>
+                    )}
+                    <TaskButton
+                      color="white"
+                      className="w-full text-xs py-2"
+                      onClick={onClose}>
+                      Acknowledge
+                    </TaskButton>
+                  </>
                 )}
               </div>
             </div>

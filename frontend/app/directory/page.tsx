@@ -5,6 +5,7 @@ import { TaskCard } from "@/components/ui/TaskCard";
 import { TaskBadge } from "@/components/ui/TaskBadge";
 import { TaskButton } from "@/components/ui/TaskButton";
 import ManageTeamModal from "@/components/ui/CreateMemberModal";
+import { getLoggedInUser } from "@/utils/auth";
 
 interface User {
   _id: string;
@@ -26,10 +27,9 @@ export default function DirectoryPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentUserRole, setCurrentUserRole] = useState<string>("USER");
+  const [currentUserId, setCurrentUserId] = useState<string>("");
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const MY_ADMIN_ID = process.env.NEXT_PUBLIC_ADMIN_ID as string;
-  const CURRENT_USER_ID = process.env.NEXT_PUBLIC_CURRENT_USER_ID || MY_ADMIN_ID;
   const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
   const isAdmin = currentUserRole === "ADMIN" || currentUserRole === "PRESIDENT";
 
@@ -45,15 +45,25 @@ export default function DirectoryPage() {
       setLoading(true);
       setError(null);
 
+      const user = getLoggedInUser();
+      if (!user) {
+        window.location.href = "/login";
+        return;
+      }
+
+      const activeUserId = user._id;
+      setCurrentUserId(activeUserId);
+      setCurrentUserRole(user.accessLevel);
+
       const [usersRes, tasksRes, profileRes] = await Promise.all([
         fetch(`${API_URL}/api/users`, {
-          headers: { "x-user-id": CURRENT_USER_ID },
+          headers: { "x-user-id": activeUserId },
         }),
         fetch(`${API_URL}/api/tasks`, {
-          headers: { "x-user-id": CURRENT_USER_ID },
+          headers: { "x-user-id": activeUserId },
         }),
-        fetch(`${API_URL}/api/users/${CURRENT_USER_ID}`, {
-          headers: { "x-user-id": CURRENT_USER_ID },
+        fetch(`${API_URL}/api/users/${activeUserId}`, {
+          headers: { "x-user-id": activeUserId },
         }),
       ]);
 
@@ -109,7 +119,7 @@ export default function DirectoryPage() {
     } finally {
       setLoading(false);
     }
-  }, [MY_ADMIN_ID, API_URL]);
+  }, [API_URL]);
 
   useEffect(() => {
     fetchUsers();
@@ -234,7 +244,7 @@ export default function DirectoryPage() {
         onClose={() => setIsModalOpen(false)}
         onTeamUpdated={fetchUsers}
         apiUrl={API_URL}
-        adminId={CURRENT_USER_ID}
+        adminId={currentUserId}
         currentUserRole={currentUserRole}
       />
     </div>

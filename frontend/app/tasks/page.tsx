@@ -10,6 +10,7 @@ import ManageTeamModal from "@/components/ui/CreateMemberModal";
 import { KanbanColumn } from "@/components/ui/KanbanColumn";
 import TaskDetailModal from "@/components/ui/TaskDetailModal";
 import { Task, User, TaskStatus } from "@/types/tasks";
+import { getLoggedInUser } from "@/utils/auth";
 
 /* ================= CONFIG ================= */
 
@@ -29,6 +30,7 @@ export default function TasksPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [currentUserRole, setCurrentUserRole] = useState<string>("USER");
+  const [currentUserId, setCurrentUserId] = useState<string>("");
   const [isLoading, setIsLoading] = useState(true);
 
   // Modal states
@@ -41,8 +43,6 @@ export default function TasksPage() {
 
   // Environment & Auth (Defensive checks added)
   const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
-  const ADMIN_ID = process.env.NEXT_PUBLIC_ADMIN_ID || "admin-fallback-id";
-  const CURRENT_USER_ID = process.env.NEXT_PUBLIC_CURRENT_USER_ID || ADMIN_ID;
   const isAdmin = currentUserRole === "ADMIN" || currentUserRole === "PRESIDENT";
   const isPresident = currentUserRole === "PRESIDENT";
 
@@ -54,15 +54,25 @@ export default function TasksPage() {
   const fetchData = useCallback(async () => {
     try {
       setIsLoading(true);
+      const user = getLoggedInUser();
+      if (!user) {
+        window.location.href = "/login";
+        return;
+      }
+
+      const activeUserId = user._id;
+      setCurrentUserId(activeUserId);
+      setCurrentUserRole(user.accessLevel);
+
       const [tasksRes, usersRes, profileRes] = await Promise.all([
         fetch(`${API_URL}/api/tasks`, {
-          headers: { "x-user-id": CURRENT_USER_ID },
+          headers: { "x-user-id": activeUserId },
         }),
         fetch(`${API_URL}/api/users`, {
-          headers: { "x-user-id": CURRENT_USER_ID },
+          headers: { "x-user-id": activeUserId },
         }),
-        fetch(`${API_URL}/api/users/${CURRENT_USER_ID}`, {
-          headers: { "x-user-id": CURRENT_USER_ID },
+        fetch(`${API_URL}/api/users/${activeUserId}`, {
+          headers: { "x-user-id": activeUserId },
         }),
       ]);
 
@@ -82,7 +92,7 @@ export default function TasksPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [API_URL, CURRENT_USER_ID]);
+  }, [API_URL]);
 
   useEffect(() => {
     fetchData();
@@ -132,7 +142,7 @@ export default function TasksPage() {
     if (!taskToMove) return;
 
     // Permission check
-    const canMove = isAdmin || taskToMove.assignedTo?._id === CURRENT_USER_ID;
+    const canMove = isAdmin || taskToMove.assignedTo?._id === currentUserId;
     if (!canMove) {
       alert("Unauthorized: You can only move tasks assigned to you.");
       return;
@@ -150,7 +160,7 @@ export default function TasksPage() {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
-          "x-user-id": CURRENT_USER_ID,
+          "x-user-id": currentUserId,
         },
         body: JSON.stringify({ status: newStatus }),
       });
@@ -230,7 +240,7 @@ export default function TasksPage() {
               color="gray"
               onTaskClick={handleTaskClick}
               isAdmin={isAdmin}
-              currentUserId={CURRENT_USER_ID}
+              currentUserId={currentUserId}
             />
           )}
 
@@ -246,7 +256,7 @@ export default function TasksPage() {
               color={color}
               onTaskClick={handleTaskClick}
               isAdmin={isAdmin}
-              currentUserId={CURRENT_USER_ID}
+              currentUserId={currentUserId}
             />
           ))}
         </div>
@@ -274,7 +284,7 @@ export default function TasksPage() {
         onClose={() => setIsTaskModalOpen(false)}
         users={users}
         onTaskCreated={fetchData}
-        adminId={CURRENT_USER_ID}
+        adminId={currentUserId}
         apiUrl={API_URL}
       />
 
@@ -283,7 +293,7 @@ export default function TasksPage() {
         onClose={() => setIsTeamModalOpen(false)}
         onTeamUpdated={fetchData}
         apiUrl={API_URL}
-        adminId={CURRENT_USER_ID}
+        adminId={currentUserId}
         currentUserRole={currentUserRole}
       />
 
@@ -300,6 +310,7 @@ export default function TasksPage() {
         }
         isAdmin={isAdmin}
         onTaskUpdated={fetchData}
+        currentUserId={currentUserId}
       />
     </div>
   );
