@@ -10,7 +10,7 @@ import { requireAuth, requireAdmin } from "../../middleware/auth_middleware";
 
 const router = Router();
 
-router.post("/", requireAuth, requireAdmin, createTask);
+router.post("/", requireAuth, createTask);
 router.get("/", requireAuth, getTasks);
 router.patch("/:id/status", requireAuth, updateTask);
 

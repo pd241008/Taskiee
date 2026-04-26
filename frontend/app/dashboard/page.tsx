@@ -19,6 +19,7 @@ export default function DashboardPage() {
     rolesWithMembers: {} as Record<string, string[]>,
     tasksPerMember: {} as Record<string, number>,
     currentUserRole: "USER",
+    users: [] as User[],
   });
 
   // Modal states
@@ -102,6 +103,7 @@ export default function DashboardPage() {
           rolesWithMembers,
           tasksPerMember,
           currentUserRole: profile.accessLevel,
+          users,
         });
       } catch (error) {
         console.error("Error loading dashboard:", error);
@@ -221,10 +223,10 @@ export default function DashboardPage() {
         </TaskCard>
 
         <TaskCard color="yellow">
-          <h2 className="text-2xl font-black uppercase mb-6 border-b-2 border-dashed border-black pb-2 text-black">
+          <h2 className="text-2xl font-black uppercase mb-6 border-b-2 border-dashed border-white/20 pb-2 text-neo-yellow">
             Team by Role
           </h2>
-          <div className="space-y-6 text-black">
+          <div className="space-y-6">
             {Object.keys(dashboardData.rolesWithMembers).length === 0 ? (
               <p className="font-mono text-gray-800">No members found.</p>
             ) : (
@@ -252,14 +254,14 @@ export default function DashboardPage() {
 
       <div className="mt-10">
         <TaskCard color="cyan">
-          <h2 className="text-2xl font-black uppercase mb-6 border-b-2 border-dashed border-black pb-2 text-black">
+          <h2 className="text-2xl font-black uppercase mb-6 border-b-2 border-dashed border-white/20 pb-2 text-neo-cyan">
             Tasks Assigned to Members
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {Object.entries(dashboardData.tasksPerMember).map(([name, count]) => (
-              <div key={name} className="bg-black/10 p-4 border border-black/20 flex justify-between items-center">
-                <span className="font-bold text-black uppercase text-sm">{name}</span>
-                <span className="bg-black text-white px-2 py-0.5 font-black text-xs">{count} TASKS</span>
+              <div key={name} className="bg-white/5 p-4 border border-white/10 flex justify-between items-center">
+                <span className="font-bold text-white uppercase text-sm">{name}</span>
+                <span className="bg-neo-cyan text-black px-2 py-0.5 font-black text-xs">{count} TASKS</span>
               </div>
             ))}
           </div>
@@ -288,6 +290,7 @@ export default function DashboardPage() {
         isAdmin={isAdmin}
         onTaskUpdated={() => window.location.reload()}
         currentUserId={currentUserId}
+        users={dashboardData.users}
       />
     </div>
   );

@@ -13,6 +13,7 @@ interface Props {
   isAdmin?: boolean;
   onTaskUpdated?: () => void;
   currentUserId: string;
+  users?: any[];
 }
 
 const statusOptions: TaskStatus[] = [
@@ -33,16 +34,19 @@ export default function TaskDetailModal({
   isAdmin = false,
   onTaskUpdated,
   currentUserId,
+  users = [],
 }: Props) {
   const [isEditing, setIsEditing] = useState(false);
   const [editedStatus, setEditedStatus] = useState<TaskStatus>("Pending");
   const [editedReview, setEditedReview] = useState("");
+  const [editedAssignee, setEditedAssignee] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     if (task) {
       setEditedStatus(task.status);
       setEditedReview(task.reviewNotes || "");
+      setEditedAssignee(task.assignedTo?._id?.toString() || "");
     }
   }, [task]);
 
@@ -62,6 +66,7 @@ export default function TaskDetailModal({
         body: JSON.stringify({
           status: statusToSave || editedStatus,
           reviewNotes: editedReview,
+          assignedTo: editedAssignee,
         }),
       });
 
@@ -84,8 +89,8 @@ export default function TaskDetailModal({
     year: "numeric",
   });
 
-  const isAssignee = task.assignedTo?._id === currentUserId;
-  const showCompleteButton = !isAdmin && isAssignee && task.status !== "Done";
+  const isAssignee = task.assignedTo?._id?.toString() === currentUserId.toString();
+  const showCompleteButton = isAssignee && task.status !== "Done";
 
   return (
     <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-[100] p-6 backdrop-blur-sm">
@@ -186,24 +191,38 @@ export default function TaskDetailModal({
                 <h3 className="text-xs font-mono text-gray-500 uppercase mb-3">
                   Assigned Agent
                 </h3>
-                {task.assignedTo ? (
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-neo-purple border-2 border-white flex items-center justify-center font-black">
-                      {task.assignedTo.name.charAt(0)}
-                    </div>
-                    <div>
-                      <p className="font-bold text-sm leading-none mb-1">
-                        {task.assignedTo.name}
-                      </p>
-                      <p className="text-[10px] text-gray-400 uppercase font-mono italic">
-                        {task.assignedTo.jobTitle || "Agent"}
-                      </p>
-                    </div>
-                  </div>
+                {isAdmin && isEditing ? (
+                  <select
+                    value={editedAssignee}
+                    onChange={(e) => setEditedAssignee(e.target.value)}
+                    className="w-full bg-black border-2 border-gray-600 p-2 text-xs text-white focus:border-neo-purple outline-none font-mono mt-2">
+                    <option value="" disabled>Select Agent...</option>
+                    {users.map((u) => (
+                      <option key={u._id} value={u._id}>
+                        {u.name.toUpperCase()}
+                      </option>
+                    ))}
+                  </select>
                 ) : (
-                  <p className="text-gray-500 italic text-sm font-mono uppercase">
-                    Unassigned
-                  </p>
+                  task.assignedTo ? (
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-neo-purple border-2 border-white flex items-center justify-center font-black">
+                        {task.assignedTo.name.charAt(0)}
+                      </div>
+                      <div>
+                        <p className="font-bold text-sm leading-none mb-1">
+                          {task.assignedTo.name}
+                        </p>
+                        <p className="text-[10px] text-gray-400 uppercase font-mono italic">
+                          {task.assignedTo.jobTitle || "Agent"}
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-gray-500 italic text-sm font-mono uppercase">
+                      Unassigned
+                    </p>
+                  )
                 )}
               </div>
 
@@ -226,12 +245,23 @@ export default function TaskDetailModal({
                       </TaskButton>
                     </>
                   ) : (
-                    <TaskButton
-                      color="yellow"
-                      className="w-full text-xs py-2"
-                      onClick={() => setIsEditing(true)}>
-                      Edit Task Details
-                    </TaskButton>
+                    <>
+                      <TaskButton
+                        color="yellow"
+                        className="w-full text-xs py-2"
+                        onClick={() => setIsEditing(true)}>
+                        Edit Task Details
+                      </TaskButton>
+                      {task.status !== "Done" && (
+                        <TaskButton
+                          color="green"
+                          className="w-full text-xs py-2 mt-2"
+                          onClick={() => handleSave("Done")}
+                          disabled={isSaving}>
+                          Quick Mark as Done
+                        </TaskButton>
+                      )}
+                    </>
                   )
                 ) : (
                   <>
