@@ -86,9 +86,10 @@ export default function DirectoryPage() {
           acc[role] = { title: role, members: [] };
         }
 
-        const userTasks = tasks.filter(t =>
-          (typeof t.assignedTo === 'string' ? t.assignedTo : (t.assignedTo as any)._id) === user._id
-        );
+        const userTasks = tasks.filter(t => {
+          const assignedId = typeof t.assignedTo === 'string' ? t.assignedTo : (t.assignedTo as any)?._id;
+          return assignedId?.toString() === user._id.toString();
+        });
 
         acc[role].members.push({ ...user, activeTasks: userTasks });
         return acc;
@@ -206,9 +207,9 @@ export default function DirectoryPage() {
                     />
                   </div>
 
-                  <h3 className="font-bold text-xl mt-2">{member.name}</h3>
+                  <h3 className="font-bold text-xl mt-2 text-white">{member.name}</h3>
 
-                  <p className="text-sm text-gray-400">{member.email}</p>
+                  <p className="text-sm text-gray-400 font-mono">{member.email}</p>
 
                   {/* ✅ Task List for Assignment Requirement */}
                   {member.activeTasks && member.activeTasks.length > 0 && (

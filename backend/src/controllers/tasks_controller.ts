@@ -29,15 +29,9 @@ export const getTasks = async (
   res: Response,
 ): Promise<void> => {
   try {
-    // Admins and Presidents see all tasks, regular users only see their own
-    const isAdminOrPresident = req.user.accessLevel === "ADMIN" || req.user.accessLevel === "PRESIDENT";
-    if (isAdminOrPresident) {
-      const tasks = await getAllTasksService();
-      res.status(200).json(tasks);
-    } else {
-      const tasks = await getTasksByUserService(req.user._id);
-      res.status(200).json(tasks);
-    }
+    // Every task should be seen by everyone (Kanban visibility)
+    const tasks = await getAllTasksService();
+    res.status(200).json(tasks);
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
@@ -49,7 +43,7 @@ export const updateTask = async (
 ): Promise<void> => {
   try {
     const id = req.params.id as string;
-    const { status, reviewNotes } = req.body;
+    const { status, reviewNotes, assignedTo } = req.body;
 
     const task = await Task.findById(id);
     if (!task) {
@@ -85,15 +79,19 @@ export const updateTask = async (
       return;
     }
 
-    // 2. Permission check for reviewNotes (only Admin/President)
-    if (reviewNotes !== undefined && !isAdminOrPresident) {
-      res.status(403).json({ error: "Forbidden: Only admins and presidents can add reviews" });
+    // 2. Permission check for restricted fields (only Admin/President)
+    const isReassigning = assignedTo !== undefined && assignedTo !== task.assignedTo.toString();
+    const isReviewing = reviewNotes !== undefined && reviewNotes !== (task.reviewNotes || "");
+
+    if ((isReassigning || isReviewing) && !isAdminOrPresident) {
+      res.status(403).json({ error: "Forbidden: Only admins and presidents can reassign tasks or add reviews" });
       return;
     }
 
     const updateData: any = {};
     if (status) updateData.status = status;
     if (reviewNotes !== undefined) updateData.reviewNotes = reviewNotes;
+    if (assignedTo) updateData.assignedTo = assignedTo;
 
     const updatedTask = await updateTaskService(id, updateData);
     res.status(200).json(updatedTask);

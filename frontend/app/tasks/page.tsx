@@ -142,7 +142,7 @@ export default function TasksPage() {
     if (!taskToMove) return;
 
     // Permission check
-    const canMove = isAdmin || taskToMove.assignedTo?._id === currentUserId;
+    const canMove = isAdmin || taskToMove.assignedTo?._id?.toString() === currentUserId.toString();
     if (!canMove) {
       alert("Unauthorized: You can only move tasks assigned to you.");
       return;
@@ -311,6 +311,7 @@ export default function TasksPage() {
         isAdmin={isAdmin}
         onTaskUpdated={fetchData}
         currentUserId={currentUserId}
+        users={users}
       />
     </div>
   );

@@ -1,1 +1,10 @@
-[]
+[
+  {
+    "_id": "69ee0118967beb35203b0896",
+    "name": "prathmesh",
+    "email": "yahoo.nethan@com",
+    "password": "88a69c35e79d4f976ffa3549da35680830a61078031cbff0088d504e93124e70",
+    "jobTitle": "Manager",
+    "accessLevel": "USER"
+  }
+]

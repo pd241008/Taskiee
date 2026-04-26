@@ -7,15 +7,33 @@ import { Project, TaskStatus } from "@/types/tasks";
 
 // Custom dynamic import for html2pdf
 const exportToPdf = async (element: HTMLElement) => {
-  const html2pdf = (await import("html2pdf.js" as any)).default;
-  const opt = {
-    margin: 10,
-    filename: `Taskiee_Report_${new Date().toLocaleDateString()}.pdf`,
-    image: { type: "jpeg", quality: 0.98 },
-    html2canvas: { scale: 2, useCORS: true, backgroundColor: "#0A0A0B" },
-    jsPDF: { unit: "mm", format: "a4", orientation: "landscape" },
-  };
-  html2pdf().set(opt).from(element).save();
+  try {
+    // Robust dynamic import for html2pdf.js
+    const html2pdf = (await import("html2pdf.js" as any)).default;
+    
+    if (!html2pdf) {
+      throw new Error("html2pdf library not found");
+    }
+
+    const opt = {
+      margin: [10, 10],
+      filename: `Taskiee_Report_${new Date().toISOString().split('T')[0]}.pdf`,
+      image: { type: "jpeg", quality: 0.98 },
+      html2canvas: { 
+        scale: 2, 
+        useCORS: true, 
+        backgroundColor: "#0A0A0B",
+        logging: false 
+      },
+      jsPDF: { unit: "mm", format: "a4", orientation: "landscape" },
+    };
+
+    // Chaining correctly
+    await html2pdf().from(element).set(opt).save();
+  } catch (err: any) {
+    console.error("PDF Export Error:", err);
+    alert(`Failed to export PDF: ${err.message || "Unknown error"}`);
+  }
 };
 
 import { getLoggedInUser } from "@/utils/auth";
@@ -184,42 +202,45 @@ export default function ReportsPage() {
       {/* Report Content for PDF */}
       <div ref={reportRef} className="p-4 bg-neo-bg">
         <div className="report-header hidden print:block mb-8">
-          <h2 className="text-4xl font-black text-white uppercase underline">Taskiee Activity Report</h2>
-          <p className="text-gray-400">Generated on {new Date().toLocaleString()}</p>
+          <h2 style={{ color: 'white', fontWeight: 900, textTransform: 'uppercase', textDecoration: 'underline', fontSize: '2.25rem' }}>Taskiee Activity Report</h2>
+          <p style={{ color: '#9ca3af' }}>Generated on {new Date().toLocaleString()}</p>
         </div>
 
         {/* Summary Stat Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
-          <TaskCard color="purple" className="flex flex-col">
-            <span className="text-xs font-black uppercase opacity-60 mb-2">Total Filtered Tasks</span>
-            <span className="text-5xl font-black">{reportData?.tasks?.length || 0}</span>
-          </TaskCard>
+          {/* Total Filtered Tasks Card */}
+          <div style={{ backgroundColor: '#151518', border: '2px solid white', padding: '1.5rem', boxShadow: '6px 6px 0px 0px #A855F7' }} className="flex flex-col">
+            <span className="text-xs font-black uppercase text-[#9ca3af] mb-2">Total Filtered Tasks</span>
+            <span style={{ color: 'white' }} className="text-5xl font-black">{reportData?.tasks?.length || 0}</span>
+          </div>
           
-          <TaskCard color="green" className="flex flex-col">
-            <span className="text-xs font-black uppercase opacity-60 mb-2">Status Breakdown</span>
+          {/* Status Breakdown Card */}
+          <div style={{ backgroundColor: '#151518', border: '2px solid white', padding: '1.5rem', boxShadow: '6px 6px 0px 0px #A3E635' }} className="flex flex-col">
+            <span className="text-xs font-black uppercase text-[#9ca3af] mb-2">Status Breakdown</span>
             <div className="space-y-1 mt-2">
               {reportData?.statusSummary?.map((s: any) => (
-                <div key={s._id} className="flex justify-between font-mono text-sm border-b border-black/10">
-                  <span>{s._id}</span>
-                  <span className="font-black">{s.count}</span>
+                <div key={s._id} style={{ borderBottom: '1px solid #1f2937' }} className="flex justify-between font-mono text-sm">
+                  <span style={{ color: 'white' }}>{s._id}</span>
+                  <span style={{ color: '#A3E635' }} className="font-black">{s.count}</span>
                 </div>
               ))}
-              {reportData?.statusSummary?.length === 0 && <span className="italic text-black/40 text-sm">No data</span>}
+              {reportData?.statusSummary?.length === 0 && <span className="italic text-[#6b7280] text-sm">No data</span>}
             </div>
-          </TaskCard>
+          </div>
 
-          <TaskCard color="yellow" className="flex flex-col">
-            <span className="text-xs font-black uppercase opacity-60 mb-2">Priority Breakdown</span>
+          {/* Priority Breakdown Card */}
+          <div style={{ backgroundColor: '#151518', border: '2px solid white', padding: '1.5rem', boxShadow: '6px 6px 0px 0px #FACC15' }} className="flex flex-col">
+            <span className="text-xs font-black uppercase text-[#9ca3af] mb-2">Priority Breakdown</span>
             <div className="space-y-1 mt-2">
               {reportData?.prioritySummary?.map((p: any) => (
-                <div key={p._id} className="flex justify-between font-mono text-sm border-b border-black/10 text-black">
+                <div key={p._id} style={{ borderBottom: '1px solid #1f2937' }} className="flex justify-between font-mono text-sm text-white">
                   <span>{p._id}</span>
-                  <span className="font-black">{p.count}</span>
+                  <span style={{ color: '#FACC15' }} className="font-black">{p.count}</span>
                 </div>
               ))}
-              {reportData?.prioritySummary?.length === 0 && <span className="italic text-black/40 text-sm">No data</span>}
+              {reportData?.prioritySummary?.length === 0 && <span className="italic text-[#6b7280] text-sm">No data</span>}
             </div>
-          </TaskCard>
+          </div>
         </div>
 
         {/* Detailed Table */}
